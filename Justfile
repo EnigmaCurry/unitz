@@ -17,5 +17,6 @@ _test-clj:
     clojure -M:test
 
 # Run tests in both Babashka and Clojure JVM
-test: _test-bb _test-clj
+test:
+    nix develop --command bash -c "bb test && clojure -M:test"
 

@@ -420,27 +420,6 @@
        :phrase phrase}
       (throw ex))))
 
-(defn split-on-conversion-word [tokens]
-  (let [[before after] (split-with #(not (conversion-word? %)) tokens)]
-    (cond
-      (empty? after)
-      {:error :missing-conversion-word
-       :tokens tokens
-       :expected ["in" "to"]}
-
-      (empty? before)
-      {:error :missing-source-quantity
-       :tokens tokens}
-
-      (empty? (rest after))
-      {:error :missing-target-unit
-       :tokens tokens
-       :conversion-word (first after)}
-
-      :else
-      {:from before
-       :conversion-word (first after)
-       :to (rest after)})))
 
 (defn parse-request [phrase]
   (let [original phrase]

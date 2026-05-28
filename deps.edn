@@ -3,7 +3,7 @@
  :aliases
  {:test
   {:extra-paths ["test"]
-   :main-opts ["-m" "clojure.test"]}
+   :main-opts ["-e" "(require '[clojure.test :as t] '[unitz.core-test] '[unitz.conversion-test] '[unitz.parser-test] '[unitz.request-test] '[unitz.units-test]) (let [{:keys [fail error]} (t/run-tests 'unitz.core-test 'unitz.conversion-test 'unitz.parser-test 'unitz.request-test 'unitz.units-test)] (System/exit (if (pos? (+ fail error)) 1 0)))"]}
 
   :cli
   {:main-opts ["-m" "unitz.cli"]}}}
