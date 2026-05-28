@@ -160,7 +160,7 @@
     ""
     "Examples:"
     "  unitz 12 feet in yards"
-    "  unitz 2 cubic yards to US liquid gallons"
+    "  unitz 2 cubic yards to gallons"
     "  unitz --list"
     "  unitz --list --kind length"]))
 
