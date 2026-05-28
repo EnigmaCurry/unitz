@@ -134,9 +134,23 @@
     :invalid-request (str "Error: Invalid request")
     (str "Error: " (pr-str err))))
 
-(defn split-input-parts [input]
-  (when-let [[_ lhs rhs] (re-find #"(?i)^(.+?)\s+(?:in|to)\s+(.+?)$" input)]
-    [(str/trim lhs) (str/trim rhs)]))
+(defn split-input-parts
+  "Extract [from target] from the input, where from is the quantity side
+   and target is the unit-only side."
+  [input]
+  (or
+   ;; how many X are in Y → from=Y, target=X
+   (when-let [[_ to from] (re-matches #"(?i)^how many (.+) are in (.+)$" input)]
+     [(str/trim from) (str/trim to)])
+   ;; how many X is Y → from=Y, target=X
+   (when-let [[_ to from] (re-matches #"(?i)^how many (.+) is (.+)$" input)]
+     [(str/trim from) (str/trim to)])
+   ;; Y is how many X → from=Y, target=X (but parser may swap)
+   (when-let [[_ from to] (re-matches #"(?i)^(.+) is how many (.+)$" input)]
+     [(str/trim from) (str/trim to)])
+   ;; Generic "X in/to Y"
+   (when-let [[_ lhs _ rhs] (re-matches #"(?i)^(?:(?:how much is|what is|convert)\s+)?(.+?)\s+(in|to)\s+(.+?)$" input)]
+     [(str/trim lhs) (str/trim rhs)])))
 
 (defn process-request-text [input fmt-opts]
   (let [parsed (parser/parse-request input)
@@ -154,12 +168,10 @@
        :target nil}
 
       :else
-      (let [[lhs rhs] (split-input-parts input)
-            has-number? #(re-find #"\d|^(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|half|quarter)\b" (str/lower-case (or % "")))
-            swapped? (and (not (has-number? lhs)) (has-number? rhs))]
+      (let [[from target] (split-input-parts input)]
         {:result (format-number result fmt-opts)
-         :from (if swapped? rhs lhs)
-         :target (if swapped? lhs rhs)}))))
+         :from from
+         :target target}))))
 
 (defn usage []
   (str/join
@@ -248,7 +260,7 @@
               (binding [*out* *err*]
                 (println error))
               (System/exit 1))
-            (if verbose?
+            (if (and from target)
               (println (str from " = " result " " target))
               (println result))))))
     (catch Exception e

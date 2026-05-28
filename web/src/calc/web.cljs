@@ -28,6 +28,25 @@
     :invalid-request "Invalid request"
     (str "Error: " (pr-str {:error error}))))
 
+(defn- split-input [input]
+  "Extract the quantity (from) and target unit parts from the input string."
+  (let [patterns [#"(?i)^how many (.+) are in (.+)$"
+                  #"(?i)^how many (.+) is (.+)$"
+                  #"(?i)^(.+) is how many (.+)$"
+                  #"(?i)^how much is (.+) (?:in|to) (.+)$"
+                  #"(?i)^what is (.+) (?:in|to) (.+)$"
+                  #"(?i)^convert (.+) (?:in|to) (.+)$"]]
+    (or (some (fn [pat]
+                (when-let [[_ a b] (re-matches pat input)]
+                  ;; For "how many X are in Y" patterns, quantity is b, target is a
+                  (if (re-find #"(?i)^how many .+ (?:are in|is) " input)
+                    {:from b :target a}
+                    {:from a :target b})))
+              patterns)
+        ;; Generic "X in/to Y"
+        (when-let [[_ from _ to] (re-matches #"(?i)^(.+) (in|to) (.+)$" input)]
+          {:from from :target to}))))
+
 (defn evaluate [input]
   (let [input (str/trim input)]
     (when-not (str/blank? input)
@@ -37,16 +56,20 @@
           {:result (format-number math-result)}
           ;; Then try as unit conversion
           (let [parsed (parser/parse-request input)
-                result (core/convert-request parsed)]
+                result (core/convert-request parsed)
+                {:keys [from target]} (split-input input)]
             (cond
               (core/error? result)
               {:error (format-error result)}
 
               (:unit-label result)
-              {:result (str (format-number (:value result)) " " (:unit-label result))}
+              {:from input
+               :result (str (format-number (:value result)) " " (:unit-label result))}
 
-              (contains? result :value)
-              {:result (format-number (:value result))}
+              (some? from)
+              {:from from
+               :target target
+               :result (format-number result)}
 
               :else
               {:result (format-number result)})))
@@ -122,16 +145,18 @@
     (when-not (str/blank? input)
       (if (clear-commands (str/lower-case input))
         (clear-history!)
-        (let [result (evaluate input)]
+        (let [ev (evaluate input)]
           (swap! state assoc
-                 :result (:result result)
-                 :error (:error result)
+                 :result (:result ev)
+                 :error (:error ev)
                  :input "")
           (swap! state update :history
                  (fn [h]
                    (into [{:input input
-                           :result (:result result)
-                           :error (:error result)}]
+                           :from (:from ev)
+                           :target (:target ev)
+                           :result (:result ev)
+                           :error (:error ev)}]
                          h)))
           (save-history! (:history @state))
           (js/setTimeout scroll-log-to-top 0))))))
@@ -144,16 +169,18 @@
   [:button.example
    {:on-click (fn []
                 (swap! state assoc :input text)
-                (let [result (evaluate text)]
+                (let [ev (evaluate text)]
                   (swap! state assoc
-                         :result (:result result)
-                         :error (:error result)
+                         :result (:result ev)
+                         :error (:error ev)
                          :input "")
                   (swap! state update :history
                          (fn [h]
                            (into [{:input text
-                                   :result (:result result)
-                                   :error (:error result)}]
+                                   :from (:from ev)
+                                   :target (:target ev)
+                                   :result (:result ev)
+                                   :error (:error ev)}]
                                  h)))
                   (save-history! (:history @state))
                   (js/setTimeout scroll-log-to-top 0)))}
@@ -174,8 +201,14 @@
                 :on-key-down on-keydown}]
        (when preview
          [:div.preview-dropdown
-          (if (:error preview)
+          (cond
+            (:error preview)
             [:span.preview-error (:error preview)]
+
+            (:target preview)
+            [:span.preview-result (str "= " (:result preview) " " (:target preview))]
+
+            :else
             [:span.preview-result (str "= " (:result preview))])
           [:button.convert {:on-click evaluate!} "="]])]
       [:button.menu-btn {:on-click #(swap! state update :menu-open not)}
@@ -207,12 +240,18 @@
      [:main {:ref #(reset! log-ref %)}
       (if (seq history)
         [:div.log
-         (for [[idx {:keys [input result error]}] (map-indexed vector history)]
+         (for [[idx {:keys [input from target result error]}] (map-indexed vector history)]
            ^{:key idx}
            [:div.log-entry
-            [:span.log-input input]
-            (if error
+            [:span.log-input (or from input)]
+            (cond
+              error
               [:span.log-error (str " \u2192 " error)]
+
+              target
+              [:span.log-result (str " = " result " " target)]
+
+              :else
               [:span.log-result (str " = " result)])])]
         [:div.examples
          [:h3 "Try some examples"]
