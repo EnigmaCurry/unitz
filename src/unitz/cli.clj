@@ -23,13 +23,21 @@
     :invalid-request (str "Error: Invalid request")
     (str "Error: " (pr-str err))))
 
+(defn split-input-parts [input]
+  (when-let [[_ lhs rhs] (re-find #"(?i)^(.+?)\s+(?:in|to)\s+(.+?)$" input)]
+    [(str/trim lhs) (str/trim rhs)]))
+
 (defn process-request-text [input]
-  (let [result (-> input
-                   parser/parse-request
-                   u/convert-request)]
+  (let [parsed (parser/parse-request input)
+        result (u/convert-request parsed)]
     (if (and (map? result) (contains? result :error))
       {:error (format-error result)}
-      {:result (format-number result)})))
+      (let [[lhs rhs] (split-input-parts input)
+            has-number? #(re-find #"\d|^(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|half|quarter)\b" (str/lower-case (or % "")))
+            swapped? (and (not (has-number? lhs)) (has-number? rhs))]
+        {:result (format-number result)
+         :from (if swapped? rhs lhs)
+         :target (if swapped? lhs rhs)}))))
 
 (defn usage []
   (str/join
@@ -52,14 +60,14 @@
           (println (usage)))
         (System/exit 1))
       (try
-        (let [{:keys [error result]} (process-request-text input)]
+        (let [{:keys [error result from target]} (process-request-text input)]
           (if error
             (do
               (binding [*out* *err*]
                 (println error))
               (System/exit 1))
             (if verbose?
-              (println (str input " = " result))
+              (println (str from " = " result " " target))
               (println result))))
         (catch Exception e
           (binding [*out* *err*]
