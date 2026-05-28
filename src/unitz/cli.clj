@@ -5,10 +5,21 @@
             [unitz.parser :as parser])
   (:gen-class))
 
+(defn format-number [x]
+  (cond
+    (instance? java.math.BigDecimal x)
+    (.toPlainString (.stripTrailingZeros ^java.math.BigDecimal x))
+
+    :else
+    (str x)))
+
 (defn process-request-text [input]
-  (-> input
-      parser/parse-request
-      u/convert-request))
+  (let [result (-> input
+                   parser/parse-request
+                   u/convert-request)]
+    (if (and (map? result) (contains? result :error))
+      result
+      (format-number result))))
 
 (defn usage []
   (str/join

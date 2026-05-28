@@ -20,3 +20,7 @@ _test-clj:
 test:
     nix develop --command bash -c "bb test && clojure -M:test"
 
+# Run a conversion (e.g., just unitz 5 miles to km)
+unitz *ARGS:
+    nix develop --command bb -e "(require '[unitz.cli :as cli]) (println (cli/process-request-text \"{{ARGS}}\"))"
+
