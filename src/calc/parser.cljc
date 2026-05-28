@@ -903,8 +903,16 @@
             [without-approx approx?] (extract-approx without-format)
             pieces (split-request without-approx)]
         (if-not pieces
-          {:error :unparseable
-           :phrase original}
+          ;; No "in"/"to" target — try as a standalone quantity expression
+          (let [qty (try (parse-quantity without-approx)
+                         #?(:clj (catch Exception _ nil)
+                            :cljs (catch :default _ nil)))]
+            (if (and qty (:qty-expr qty))
+              (cond-> {:op :convert :quantity qty :to :auto}
+                approx? (assoc :approx? true)
+                format (assoc :format format))
+              {:error :unparseable
+               :phrase original}))
           (let [[quantity-str to-str] pieces
                 ;; Try swapping if quantity side has no number
                 ;; e.g. "seconds in one year" -> "one year" to "seconds"

@@ -141,8 +141,19 @@
 (defn process-request-text [input fmt-opts]
   (let [parsed (parser/parse-request input)
         result (u/convert-request parsed)]
-    (if (and (map? result) (contains? result :error))
+    (cond
+      (and (map? result) (contains? result :error))
       {:error (format-error result)}
+
+      ;; Auto-scaled result (no target unit specified)
+      (and (map? result) (contains? result :unit-label))
+      {:result (str (format-number (:value result) fmt-opts)
+                    (when (:unit-label result)
+                      (str " " (:unit-label result))))
+       :from input
+       :target nil}
+
+      :else
       (let [[lhs rhs] (split-input-parts input)
             has-number? #(re-find #"\d|^(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|half|quarter)\b" (str/lower-case (or % "")))
             swapped? (and (not (has-number? lhs)) (has-number? rhs))]

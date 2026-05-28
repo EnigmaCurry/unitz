@@ -38,8 +38,17 @@
           ;; Then try as unit conversion
           (let [parsed (parser/parse-request input)
                 result (core/convert-request parsed)]
-            (if (core/error? result)
+            (cond
+              (core/error? result)
               {:error (format-error result)}
+
+              (:unit-label result)
+              {:result (str (format-number (:value result)) " " (:unit-label result))}
+
+              (contains? result :value)
+              {:result (format-number (:value result))}
+
+              :else
               {:result (format-number result)})))
         (catch :default e
           {:error (if-let [data (.-data e)]
@@ -159,7 +168,7 @@
       [:div.input-wrapper
        [:input {:type "text"
                 :value input
-                :placeholder "e.g. 12 feet in yards"
+                :placeholder "e.g. 100GB / 900Mbps"
                 :auto-focus true
                 :on-change #(swap! state assoc :input (.. % -target -value))
                 :on-key-down on-keydown}]

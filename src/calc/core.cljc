@@ -464,6 +464,66 @@
        :from  (:dim result)
        :to    (:dim to-spec)})))
 
+;; ---------------------------------------------------------------------------
+;; Auto-scaling: pick the best unit for a given dimension and SI value
+;; ---------------------------------------------------------------------------
+
+(def ^:private auto-scale-units
+  "Ordered lists of [unit-key scale] for each base dimension, sorted ascending."
+  (let [pick (fn [dim ks]
+               (->> ks
+                    (map (fn [k] [k (get-in unit-defs [k :scale])]))
+                    (sort-by (fn [[_ s]] #?(:clj (double s) :cljs s)))))]
+    {{:time 1}   (pick {:time 1}   [:s :min :hr :day :week :yr])
+     {:length 1} (pick {:length 1} [:mm :cm :m :km :mi])
+     {:mass 1}   (pick {:mass 1}   [:g :kg :lb])
+     {:data 1}   (pick {:data 1}   [:B :KB :MB :GB :TB :PB])}))
+
+(def ^:private unit-display-names
+  {:s "seconds" :min "minutes" :hr "hours" :day "days" :week "weeks" :yr "years"
+   :mm "mm" :cm "cm" :m "meters" :km "km" :mi "miles"
+   :g "grams" :kg "kg" :lb "pounds"
+   :B "bytes" :KB "KB" :MB "MB" :GB "GB" :TB "TB" :PB "PB"})
+
+(defn- auto-select-unit
+  "Given a dimension map and a value in SI base units, pick the best unit
+   and return {:value converted-value :unit-label \"days\"}."
+  [dim si-value]
+  (if-let [candidates (get auto-scale-units dim)]
+    (let [abs-val #?(:clj (.abs (bigdec si-value)) :cljs (js/Math.abs si-value))
+          ;; Pick the largest unit where the result is >= 1
+          best (or (->> candidates
+                        reverse
+                        (filter (fn [[_ s]]
+                                  (>= #?(:clj (double (safe-div abs-val s))
+                                         :cljs (/ abs-val s))
+                                      1.0)))
+                        first)
+                   (first candidates))
+          [unit-key scale] best
+          converted (normalize-number (safe-div si-value scale))]
+      {:value converted :unit-label (get unit-display-names unit-key (name unit-key))})
+    ;; Unknown dimension — just return the SI value
+    {:value (normalize-number si-value) :unit-label nil}))
+
+(defn- evaluate-qty-expr-auto
+  "Evaluate a quantity expression and auto-select the best output unit."
+  [{:keys [terms ops]}]
+  (let [first-spec (unit-spec (:unit (first terms)))
+        result (reduce
+                (fn [{:keys [value dim]} [op term]]
+                  (let [spec     (unit-spec (:unit term))
+                        term-val (* (coerce-to-decimal (:value term)) (:scale spec))]
+                    (case op
+                      :* {:value (* value term-val)
+                          :dim   (merge-dims dim (:dim spec))}
+                      :/ {:value (safe-div value term-val)
+                          :dim   (merge-dims dim (scale-dim (:dim spec) -1))})))
+                {:value (* (coerce-to-decimal (:value (first terms))) (:scale first-spec))
+                 :dim   (:dim first-spec)}
+                (map vector ops (rest terms)))]
+    (auto-select-unit (:dim result) (:value result))))
+
 (defn convert-request [{:keys [op quantity to] :as request}]
   (cond
     (error? request)
@@ -472,6 +532,9 @@
     (not= op :convert)
     {:error :unsupported-operation
      :op op}
+
+    (and (:qty-expr quantity) (= to :auto))
+    (evaluate-qty-expr-auto quantity)
 
     (:qty-expr quantity)
     (evaluate-qty-expr quantity to)
