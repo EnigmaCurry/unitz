@@ -53,12 +53,28 @@
               (js/JSON.stringify (clj->js history)))
     (catch :default _ nil)))
 
+(defn load-theme []
+  (or (try (.getItem js/localStorage "calc-theme") (catch :default _ nil))
+      "dark"))
+
 (defonce state (r/atom {:input ""
                         :result nil
                         :error nil
-                        :history (load-history)}))
+                        :history (load-history)
+                        :menu-open false
+                        :theme (load-theme)}))
 
 (defonce log-ref (atom nil))
+
+(defn apply-theme! [theme]
+  (let [root (.-documentElement js/document)]
+    (.setAttribute root "data-theme" theme)))
+
+(defn toggle-theme! []
+  (let [new-theme (if (= "dark" (:theme @state)) "light" "dark")]
+    (swap! state assoc :theme new-theme)
+    (.setItem js/localStorage "calc-theme" new-theme)
+    (apply-theme! new-theme)))
 
 (def examples
   ["12 feet in yards"
@@ -118,7 +134,7 @@
    text])
 
 (defn app []
-  (let [{:keys [input history]} @state
+  (let [{:keys [input history menu-open theme]} @state
         preview (when-not (str/blank? input) (evaluate input))]
     [:<>
      [:header
@@ -136,12 +152,32 @@
             [:span.preview-error (:error preview)]
             [:span.preview-result (str "= " (:result preview))])
           [:button.convert {:on-click evaluate!} "="]])]
-      [:button.clear {:on-click #(when (js/confirm "Clear all history?")
-                                    (reset! state {:input "" :result nil :error nil :history []})
-                                    (save-history! []))} "CE"]
-      [:a.help {:href "https://github.com/EnigmaCurry/calc"
-                :target "_blank"
-                :rel "noopener"} "?"]]
+      [:button.menu-btn {:on-click #(swap! state update :menu-open not)}
+       [:span.hamburger]
+       [:span.hamburger]
+       [:span.hamburger]]]
+
+     (when menu-open
+       [:<>
+        [:div.menu-overlay {:on-click #(swap! state assoc :menu-open false)}]
+        [:nav.menu
+         [:button.menu-item
+          {:on-click (fn []
+                      (when (js/confirm "Clear all history?")
+                        (swap! state assoc :input "" :result nil :error nil :history [] :menu-open false)
+                        (save-history! [])))}
+          "Clear Everything"]
+         [:button.menu-item
+          {:on-click (fn []
+                      (toggle-theme!)
+                      (swap! state assoc :menu-open false))}
+          (if (= theme "dark") "Light Mode" "Dark Mode")]
+         [:a.menu-item
+          {:href "https://github.com/EnigmaCurry/calc"
+           :target "_blank"
+           :rel "noopener"
+           :on-click #(swap! state assoc :menu-open false)}
+          "About"]]])
 
      [:main {:ref #(reset! log-ref %)}
       (if (seq history)
@@ -162,6 +198,7 @@
 (defonce root (atom nil))
 
 (defn ^:export init []
+  (apply-theme! (load-theme))
   (let [el (js/document.getElementById "app")]
     (when-not @root
       (reset! root (rdom/create-root el)))
