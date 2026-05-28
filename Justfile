@@ -22,5 +22,5 @@ test:
 
 # Run a conversion (e.g., just unitz 5 miles to km)
 unitz *ARGS:
-    nix develop --command bb -e "(require '[unitz.cli :as cli]) (cli/-main \"{{ARGS}}\")"
+    @nix develop --command bb -e "(require '[unitz.cli :as cli]) (cli/-main \"{{ARGS}}\")"
 
