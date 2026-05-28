@@ -1,6 +1,6 @@
-(ns unitz.conversion-test
+(ns calc.conversion-test
   (:require [clojure.test :refer [deftest is testing]]
-            [unitz.core :as u]))
+            [calc.core :as u]))
 
 (deftest compatibility-test
   (testing "simple compatible units"

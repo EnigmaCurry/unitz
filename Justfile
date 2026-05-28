@@ -24,7 +24,7 @@ test:
 web-build:
     cd web && npm ci && npx shadow-cljs release app
 
-# Run a conversion (e.g., just unitz 5 miles to km)
-unitz *ARGS:
-    @nix develop --command bb -e "(require '[unitz.cli :as cli]) (cli/-main \"{{ARGS}}\")"
+# Run a conversion (e.g., just calc 5 miles to km)
+calc *ARGS:
+    @nix develop --command bb -e "(require '[calc.cli :as cli]) (cli/-main \"{{ARGS}}\")"
 

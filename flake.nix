@@ -1,5 +1,5 @@
 {
-  description = "unitz development environment";
+  description = "calc development environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";

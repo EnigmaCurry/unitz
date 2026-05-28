@@ -1,6 +1,6 @@
-(ns unitz.core
+(ns calc.core
   #?(:clj (:import [java.math BigDecimal MathContext RoundingMode]))
-  (:require [unitz.parser :as parser]))
+  (:require [calc.parser :as parser]))
 
 ;; ============================================================================
 ;; Legacy ratio-based unit system (JVM/Babashka only)

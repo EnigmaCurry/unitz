@@ -1,6 +1,6 @@
-(ns unitz.parser-test
+(ns calc.parser-test
   (:require [clojure.test :refer [deftest testing is are]]
-            [unitz.parser :as parser]))
+            [calc.parser :as parser]))
 
 (deftest parses-simple-scalar-conversions
   (testing "basic '<number> <unit> in/to <unit>' phrases"

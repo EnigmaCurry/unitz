@@ -1,4 +1,4 @@
-(ns unitz.parser
+(ns calc.parser
   (:require [clojure.string :as str]))
 
 (def unit-aliases

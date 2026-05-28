@@ -1,6 +1,6 @@
-(ns unitz.units-test
+(ns calc.units-test
   (:require [clojure.test :refer [deftest is testing]]
-            [unitz.core :as u]))
+            [calc.core :as u]))
 
 (deftest unit-registry-shape-test
   (testing "every unit has kind, dimension, and factor"

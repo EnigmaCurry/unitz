@@ -15,145 +15,127 @@
       --accent-hover: #79c0ff;
       --green: #3fb950;
       --red: #f85149;
-      --radius: 8px;
+      --header-height: 56px;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body, #app {
+      height: 100%;
+      overflow: hidden;
+    }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
       background: var(--bg);
       color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .container {
-      max-width: 640px;
-      margin: 0 auto;
-      padding: 2rem 1rem;
-      width: 100%;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
     }
 
     header {
-      text-align: center;
-      margin-bottom: 2rem;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--header-height);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 1rem;
+      gap: 0.75rem;
+      z-index: 10;
     }
 
     h1 {
-      font-size: 2.5rem;
+      font-size: 1.4rem;
       font-weight: 700;
-      letter-spacing: -0.02em;
       color: var(--accent);
+      flex-shrink: 0;
     }
 
-    .subtitle {
-      color: var(--text-muted);
-      margin-top: 0.25rem;
-      font-size: 1rem;
-    }
-
-    main { flex: 1; }
-
-    .input-group {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 1.5rem;
-    }
-
-    input[type="text"] {
+    header input[type="text"] {
       flex: 1;
-      padding: 0.75rem 1rem;
-      font-size: 1.1rem;
-      background: var(--surface);
+      max-width: 600px;
+      padding: 0.5rem 0.75rem;
+      font-size: 1rem;
+      background: var(--bg);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
+      border-radius: 6px;
       color: var(--text);
       outline: none;
       transition: border-color 0.15s;
     }
 
-    input[type="text"]:focus {
+    header input[type="text"]:focus {
       border-color: var(--accent);
     }
 
-    input[type="text"]::placeholder {
+    header input[type="text"]::placeholder {
       color: var(--text-muted);
     }
 
     button.convert {
-      padding: 0.75rem 1.5rem;
+      padding: 0.5rem 1rem;
       font-size: 1rem;
       font-weight: 600;
       background: var(--accent);
       color: var(--bg);
       border: none;
-      border-radius: var(--radius);
+      border-radius: 6px;
       cursor: pointer;
       transition: background 0.15s;
-      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     button.convert:hover {
       background: var(--accent-hover);
     }
 
-    .result, .error {
-      padding: 1rem 1.25rem;
-      border-radius: var(--radius);
-      margin-bottom: 1.5rem;
+    main {
+      position: fixed;
+      top: var(--header-height);
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overflow-y: auto;
+      padding: 1rem;
+    }
+
+    .log {
       display: flex;
-      align-items: baseline;
-      gap: 0.75rem;
+      flex-direction: column;
+      gap: 0.25rem;
     }
 
-    .result {
-      background: rgba(63, 185, 80, 0.1);
-      border: 1px solid rgba(63, 185, 80, 0.3);
-    }
-
-    .error {
-      background: rgba(248, 81, 73, 0.1);
-      border: 1px solid rgba(248, 81, 73, 0.3);
-    }
-
-    .result .label {
-      color: var(--green);
-      font-weight: 600;
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .error .label {
-      color: var(--red);
-      font-weight: 600;
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .result .value {
-      font-size: 1.5rem;
-      font-weight: 600;
+    .log-entry {
       font-family: "SF Mono", "Fira Code", "Fira Mono", monospace;
-      color: var(--green);
+      font-size: 0.95rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 4px;
     }
 
-    .error .value {
-      font-size: 1rem;
+    .log-entry:first-child {
+      background: var(--surface);
+    }
+
+    .log-input {
+      color: var(--text-muted);
+    }
+
+    .log-result {
+      color: var(--green);
+      font-weight: 600;
+    }
+
+    .log-error {
       color: var(--red);
     }
 
     .examples {
-      margin-bottom: 1.5rem;
+      padding: 2rem 0;
     }
 
-    .examples h3, .history h3 {
+    .examples h3 {
       font-size: 0.85rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
@@ -184,48 +166,13 @@
       color: var(--accent);
     }
 
-    .history {
-      margin-top: 0.5rem;
-    }
-
-    .history-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-
-    .history-item {
-      font-family: "SF Mono", "Fira Code", "Fira Mono", monospace;
-      font-size: 0.9rem;
-      color: var(--text-muted);
-      padding: 0.35rem 0;
-    }
-
-    .hist-input { color: var(--text-muted); }
-    .hist-eq { color: var(--text-muted); }
-    .hist-result { color: var(--green); font-weight: 600; }
-
-    footer {
-      text-align: center;
-      padding: 1.5rem 0;
-      color: var(--text-muted);
-      font-size: 0.85rem;
-    }
-
-    footer a {
-      color: var(--accent);
-      text-decoration: none;
-    }
-
-    footer a:hover {
-      text-decoration: underline;
-    }
-
     @media (max-width: 480px) {
-      .input-group {
-        flex-direction: column;
+      header {
+        gap: 0.5rem;
+        padding: 0 0.5rem;
       }
-      h1 { font-size: 2rem; }
+      h1 { font-size: 1.2rem; }
+      header input[type="text"] { font-size: 0.9rem; }
     }
   </style>
 </head>

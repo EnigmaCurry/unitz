@@ -1,6 +1,6 @@
-(ns unitz.request-test
+(ns calc.request-test
   (:require [clojure.test :refer [deftest testing is]]
-            [unitz.core :as u]))
+            [calc.core :as u]))
 
 (deftest evaluates-simple-conversion-request
   (testing "basic scalar request"

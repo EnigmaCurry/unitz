@@ -1,8 +1,7 @@
-;; src/unitz/cli.clj
-(ns unitz.cli
-  (:require [unitz.core :as u]
+(ns calc.cli
+  (:require [calc.core :as u]
             [clojure.string :as str]
-            [unitz.parser :as parser])
+            [calc.parser :as parser])
   (:gen-class))
 
 (def dim-labels
@@ -155,14 +154,14 @@
   (str/join
    "\n"
    ["Usage:"
-    "  unitz <request>"
-    "  unitz --list [--kind <kind>]"
+    "  calc <request>"
+    "  calc --list [--kind <kind>]"
     ""
     "Examples:"
-    "  unitz 12 feet in yards"
-    "  unitz 2 cubic yards to gallons"
-    "  unitz --list"
-    "  unitz --list --kind length"]))
+    "  calc 12 feet in yards"
+    "  calc 2 cubic yards to gallons"
+    "  calc --list"
+    "  calc --list --kind length"]))
 
 (defn parse-format-opts [tokens]
   (loop [remaining tokens

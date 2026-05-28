@@ -1,6 +1,6 @@
-(ns unitz.core-test
+(ns calc.core-test
   (:require [clojure.test :refer [deftest is testing]]
-            [unitz.core :as u]))
+            [calc.core :as u]))
 
 (deftest unit-lookup-test
   (testing "known units resolve to metadata"

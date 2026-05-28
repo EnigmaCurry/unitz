@@ -46,6 +46,8 @@
                         :error nil
                         :history []}))
 
+(defonce log-ref (atom nil))
+
 (def examples
   ["12 feet in yards"
    "how many inches are in 3 feet?"
@@ -59,19 +61,25 @@
    "2 + 2"
    "3 * (4 + 5)"])
 
+(defn scroll-log-to-top []
+  (when-let [el @log-ref]
+    (set! (.-scrollTop el) 0)))
+
 (defn evaluate! []
   (let [input (:input @state)]
     (when-not (str/blank? input)
       (let [result (evaluate input)]
         (swap! state assoc
                :result (:result result)
-               :error (:error result))
-        (when (:result result)
-          (swap! state update :history
-                 (fn [h]
-                   (vec (take-last 20
-                                   (conj h {:input input
-                                            :result (:result result)}))))))))))
+               :error (:error result)
+               :input "")
+        (swap! state update :history
+               (fn [h]
+                 (into [{:input input
+                         :result (:result result)
+                         :error (:error result)}]
+                       h)))
+        (js/setTimeout scroll-log-to-top 0)))))
 
 (defn on-keydown [e]
   (when (= "Enter" (.-key e))
@@ -84,65 +92,45 @@
                 (let [result (evaluate text)]
                   (swap! state assoc
                          :result (:result result)
-                         :error (:error result))
-                  (when (:result result)
-                    (swap! state update :history
-                           (fn [h]
-                             (vec (take-last 20
-                                             (conj h {:input text
-                                                      :result (:result result)}))))))))}
+                         :error (:error result)
+                         :input "")
+                  (swap! state update :history
+                         (fn [h]
+                           (into [{:input text
+                                   :result (:result result)
+                                   :error (:error result)}]
+                                 h)))
+                  (js/setTimeout scroll-log-to-top 0)))}
    text])
 
 (defn app []
-  (let [{:keys [input result error history]} @state]
-    [:div.container
+  (let [{:keys [input history]} @state]
+    [:<>
      [:header
       [:h1 "calc"]
-      [:p.subtitle "Unit conversion & calculator in your browser"]]
+      [:input {:type "text"
+               :value input
+               :placeholder "e.g. 12 feet in yards"
+               :auto-focus true
+               :on-change #(swap! state assoc :input (.. % -target -value))
+               :on-key-down on-keydown}]
+      [:button.convert {:on-click evaluate!} "="]]
 
-     [:main
-      [:div.input-group
-       [:input {:type "text"
-                :value input
-                :placeholder "e.g. 12 feet in yards"
-                :auto-focus true
-                :on-change #(swap! state assoc :input (.. % -target -value))
-                :on-key-down on-keydown}]
-       [:button.convert {:on-click evaluate!} "Convert"]]
-
-      (when result
-        [:div.result
-         [:span.label "Result"]
-         [:span.value result]])
-
-      (when error
-        [:div.error
-         [:span.label "Error"]
-         [:span.value error]])
-
-      [:div.examples
-       [:h3 "Examples"]
-       [:div.chips
-        (for [ex examples]
-          ^{:key ex} [example-chip ex])]]
-
-      (when (seq history)
-        [:div.history
-         [:h3 "History"]
-         [:div.history-list
-          (for [{:keys [input result]} (reverse history)]
-            ^{:key (str input "-" result)}
-            [:div.history-item
-             [:span.hist-input input]
-             [:span.hist-eq " = "]
-             [:span.hist-result result]])]])]
-
-     [:footer
-      [:p "Powered by "
-       [:a {:href "https://github.com/EnigmaCurry/calc"
-            :target "_blank"
-            :rel "noopener"} "calc"]
-       " \u2014 a Clojure/ClojureScript unit conversion calculator"]]]))
+     [:main {:ref #(reset! log-ref %)}
+      (if (seq history)
+        [:div.log
+         (for [[idx {:keys [input result error]}] (map-indexed vector history)]
+           ^{:key idx}
+           [:div.log-entry
+            [:span.log-input input]
+            (if error
+              [:span.log-error (str " \u2192 " error)]
+              [:span.log-result (str " = " result)])])]
+        [:div.examples
+         [:h3 "Try some examples"]
+         [:div.chips
+          (for [ex examples]
+            ^{:key ex} [example-chip ex])]])]]))
 
 (defonce root (atom nil))
 
