@@ -1,4 +1,3 @@
-;; src/unitz/parser.clj
 (ns unitz.parser
   (:require [clojure.string :as str]))
 
@@ -169,6 +168,8 @@
    "tb" :TB
    "terabyte" :TB
    "terabytes" :TB
+   "terrabyte" :TB
+   "terrabytes" :TB
 
    "PB" :PB
    "pb" :PB
@@ -227,6 +228,8 @@
    "Tb" :Tb
    "terabit" :Tb
    "terabits" :Tb
+   "terrabit" :Tb
+   "terrabits" :Tb
 
    "Pb" :Pb
    "petabit" :Pb
@@ -276,12 +279,13 @@
       (str/replace #"," "")
       (str/replace #"~\s*" "~ ")
       ;; 12ft -> 12 ft, 100kg -> 100 kg
-      (str/replace #"(?<=\d)(?=[A-Za-z])" " ")
+      (str/replace #"(\d)([A-Za-z])" "$1 $2")
       (str/replace #"\s+" " ")
       str/trim))
 
 (defn parse-integer [s]
-  (bigint s))
+  #?(:clj (bigint s)
+     :cljs (js/parseInt s 10)))
 
 (defn parse-ratio-token [s]
   (let [[n d] (str/split s #"/")]
@@ -289,7 +293,8 @@
        (parse-integer d))))
 
 (defn parse-decimal-token [s]
-  (bigdec s))
+  #?(:clj (bigdec s)
+     :cljs (js/parseFloat s)))
 
 (def number-words
   {"zero" 0 "one" 1 "two" 2 "three" 3 "four" 4 "five" 5
@@ -307,8 +312,8 @@
    Returns [value next-index] or nil."
   [tokens i]
   (loop [j i
-         total 0N
-         current 0N
+         total 0
+         current 0
          found? false]
     (let [t (some-> (nth tokens j nil) str/lower-case)
           word-val (get number-words t)
@@ -324,9 +329,9 @@
 
         ;; A multiplier: multiply current group and add to total
         (and mult-val found?)
-        (let [group (if (zero? current) 1N current)]
+        (let [group (if (zero? current) 1 current)]
           (if (>= mult-val 1000)
-            (recur (inc j) (+ total (* group mult-val)) 0N true)
+            (recur (inc j) (+ total (* group mult-val)) 0 true)
             (recur (inc j) total (* group mult-val) true)))
 
         ;; Done parsing number words
@@ -361,6 +366,17 @@
 
 (declare ^:private math-parse-expr)
 
+(defn- char-at
+  "Get the character at index i of string s as a single-char string."
+  [s i]
+  (subs s i (inc i)))
+
+(defn- digit? [ch]
+  (boolean (re-matches #"\d" ch)))
+
+(defn- whitespace? [ch]
+  (boolean (re-matches #"\s" ch)))
+
 (defn- math-tokenize
   "Tokenize a math expression into [:num v], [:op ch], [:lp], [:rp]."
   [s]
@@ -368,45 +384,45 @@
     (loop [i 0, tokens []]
       (if (>= i n)
         tokens
-        (let [ch (nth s i)]
+        (let [ch (char-at s i)]
           (cond
-            (Character/isWhitespace ch)
+            (whitespace? ch)
             (recur (inc i) tokens)
 
-            (or (Character/isDigit ch) (= ch \.))
+            (or (digit? ch) (= ch "."))
             (let [end (loop [j (inc i)]
                         (if (and (< j n)
-                                 (let [c (nth s j)]
-                                   (or (Character/isDigit c) (= c \.))))
+                                 (let [c (char-at s j)]
+                                   (or (digit? c) (= c "."))))
                           (recur (inc j))
                           j))
                   ns (subs s i end)
                   v  (if (str/includes? ns ".")
-                       (bigdec ns)
-                       (bigint ns))]
+                       (parse-decimal-token ns)
+                       (parse-integer ns))]
               (recur end (conj tokens [:num v])))
 
-            (= ch \() (recur (inc i) (conj tokens [:lp]))
-            (= ch \)) (recur (inc i) (conj tokens [:rp]))
+            (= ch "(") (recur (inc i) (conj tokens [:lp]))
+            (= ch ")") (recur (inc i) (conj tokens [:rp]))
 
-            (#{\+ \* \/ \^} ch)
+            (#{"+" "*" "/" "^"} ch)
             (recur (inc i) (conj tokens [:op ch]))
 
-            (= ch \-)
+            (= ch "-")
             (if (or (empty? tokens) (#{:lp :op} (first (peek tokens))))
               ;; Unary minus: absorb into next number
               (let [j   (inc i)
                     end (loop [k j]
                           (if (and (< k n)
-                                   (let [c (nth s k)]
-                                     (or (Character/isDigit c) (= c \.))))
+                                   (let [c (char-at s k)]
+                                     (or (digit? c) (= c "."))))
                             (recur (inc k))
                             k))]
                 (if (> end j)
                   (let [ns (subs s i end)
                         v  (if (str/includes? ns ".")
-                             (bigdec ns)
-                             (bigint ns))]
+                             (parse-decimal-token ns)
+                             (parse-integer ns))]
                     (recur end (conj tokens [:num v])))
                   nil))
               (recur (inc i) (conj tokens [:op ch])))
@@ -424,17 +440,20 @@
       nil)))
 
 (defn- math-pow [base exp]
-  (cond
-    (zero? exp) 1N
-    (pos? exp)  (reduce * 1N (repeat exp base))
-    :else       (/ 1N (math-pow base (- exp)))))
+  #?(:clj
+     (cond
+       (zero? exp) 1N
+       (pos? exp)  (reduce * 1N (repeat exp base))
+       :else       (/ 1N (math-pow base (- exp))))
+     :cljs
+     (js/Math.pow base exp)))
 
 (defn- math-parse-power
   "Parse factor (^ factor)* — right-associative."
   [tokens pos]
   (when-let [[base p0] (math-parse-factor tokens pos)]
     (if (and (< p0 (count tokens))
-             (= [:op \^] (nth tokens p0)))
+             (= [:op "^"] (nth tokens p0)))
       (when-let [[exp p1] (math-parse-power tokens (inc p0))]
         [(math-pow base exp) p1])
       [base p0])))
@@ -444,10 +463,10 @@
     (loop [acc v0, p p0]
       (if (and (< p (count tokens))
                (= :op (first (nth tokens p)))
-               (#{\* \/} (second (nth tokens p))))
+               (#{"*" "/"} (second (nth tokens p))))
         (let [op (second (nth tokens p))]
           (if-let [[v2 p2] (math-parse-power tokens (inc p))]
-            (recur (if (= \* op) (* acc v2) (/ acc v2)) p2)
+            (recur (if (= "*" op) (* acc v2) (/ acc v2)) p2)
             [acc p]))
         [acc p]))))
 
@@ -456,10 +475,10 @@
     (loop [acc v0, p p0]
       (if (and (< p (count tokens))
                (= :op (first (nth tokens p)))
-               (#{\+ \-} (second (nth tokens p))))
+               (#{"+" "-"} (second (nth tokens p))))
         (let [op (second (nth tokens p))]
           (if-let [[v2 p2] (math-parse-term tokens (inc p))]
-            (recur (if (= \+ op) (+ acc v2) (- acc v2)) p2)
+            (recur (if (= "+" op) (+ acc v2) (- acc v2)) p2)
             [acc p]))
         [acc p]))))
 
@@ -499,7 +518,7 @@
             (when-let [v (parse-math (str/join " " parts))]
               [v j])))
         ;; Expecting an operator (+, -, *)
-        (if (and tok (= 1 (count tok)) (#{\+ \- \* \^} (first tok)))
+        (if (and tok (= 1 (count tok)) (#{"+" "-" "*" "^"} tok))
           (recur (inc j) (conj parts tok))
           (when (>= (count parts) 3)
             (when-let [v (parse-math (str/join " " parts))]
@@ -510,13 +529,13 @@
         t2 (some-> (nth tokens (inc i) nil) str/lower-case)]
     (cond
       (#{"a" "an"} t)
-      [1N (inc i)]
+      [1 (inc i)]
 
       (= "half" t)
-      [1/2 (inc i)]
+      [#?(:clj 1/2 :cljs 0.5) (inc i)]
 
       (= "quarter" t)
-      [1/4 (inc i)]
+      [#?(:clj 1/4 :cljs 0.25) (inc i)]
 
       ;; Plain number, possibly followed by mixed fraction or math operators
       (some? (parse-number-token t))
@@ -560,6 +579,10 @@
        (remove (fn [[_ v]] (zero? v)))
        (into {})))
 
+(defn- parse-int-str [s]
+  #?(:clj (Integer/parseInt s)
+     :cljs (js/parseInt s 10)))
+
 (defn parse-component-token [token]
   (let [raw token
         lower (str/lower-case raw)]
@@ -579,7 +602,7 @@
       (re-matches #"(?i).+\^-?\d+" raw)
       (let [[base exp] (str/split raw #"\^")]
         (unit-map (normalize-unit-token base)
-                  (Integer/parseInt exp)))
+                  (parse-int-str exp)))
 
       :else
       (normalize-unit-token raw))))
@@ -593,6 +616,13 @@
   (let [tokens (remove #(#{"a" "an"} (str/lower-case %)) tokens)
         components (map parse-component-token tokens)]
     (simple-unit-result components)))
+
+(defn- vec-index-of [v val]
+  (loop [i 0]
+    (cond
+      (>= i (count v)) -1
+      (= (nth v i) val) i
+      :else (recur (inc i)))))
 
 (defn parse-unit-phrase [s]
   (let [tokens (->> (str/split (str/trim s) #"\s+")
@@ -610,7 +640,7 @@
       (unit-map (parse-unit-phrase (str/join " " (rest tokens))) 3)
 
       (some #{"per"} lower-tokens)
-      (let [i (.indexOf lower-tokens "per")
+      (let [i (vec-index-of lower-tokens "per")
             num-tokens (subvec tokens 0 i)
             den-tokens (subvec tokens (inc i))]
         (merge-unit-maps
@@ -618,7 +648,7 @@
          (unit-map (parse-unit-product den-tokens) -1)))
 
       (some #{"/"} lower-tokens)
-      (let [i (.indexOf lower-tokens "/")
+      (let [i (vec-index-of lower-tokens "/")
             num-tokens (subvec tokens 0 i)
             den-tokens (subvec tokens (inc i))]
         (merge-unit-maps
@@ -713,17 +743,21 @@
                      (conj terms {:value value
                                   :unit (parse-unit-phrase unit-str)}))))))))
 
+(defn- parse-long-str [s]
+  #?(:clj (Long/parseLong s)
+     :cljs (js/parseInt s 10)))
+
 (defn extract-format [s]
   (cond
     (re-find #"(?i)\s+rounded to \d+ decimals?$" s)
     (let [[_ n] (re-find #"(?i)\s+rounded to (\d+) decimals?$" s)]
       [(str/replace s #"(?i)\s+rounded to \d+ decimals?$" "")
-       {:round (Long/parseLong n)}])
+       {:round (parse-long-str n)}])
 
     (re-find #"(?i)\s+with \d+ sig figs$" s)
     (let [[_ n] (re-find #"(?i)\s+with (\d+) sig figs$" s)]
       [(str/replace s #"(?i)\s+with \d+ sig figs$" "")
-       {:sig-figs (Long/parseLong n)}])
+       {:sig-figs (parse-long-str n)}])
 
     (re-find #"(?i)\s+as a fraction$" s)
     [(str/replace s #"(?i)\s+as a fraction$" "")
@@ -801,6 +835,31 @@
 
       (throw ex))))
 
+(defn- try-parse-quantity [s]
+  (try
+    (parse-quantity s)
+    true
+    #?(:clj (catch Exception _ false)
+       :cljs (catch :default _ false))))
+
+(defn- try-swap-sides [quantity-str to-str]
+  (try
+    (parse-quantity quantity-str)
+    [quantity-str to-str]
+    #?(:clj
+       (catch Exception _
+         (try
+           (parse-quantity to-str)
+           [to-str quantity-str]
+           (catch Exception _
+             [quantity-str to-str])))
+       :cljs
+       (catch :default _
+         (try
+           (parse-quantity to-str)
+           [to-str quantity-str]
+           (catch :default _
+             [quantity-str to-str]))))))
 
 (defn parse-request [phrase]
   (let [original phrase]
@@ -815,22 +874,9 @@
           (let [[quantity-str to-str] pieces
                 ;; Try swapping if quantity side has no number
                 ;; e.g. "seconds in one year" -> "one year" to "seconds"
-                [quantity-str to-str]
-                (try
-                  (parse-quantity quantity-str)
-                  [quantity-str to-str]
-                  (catch Exception _
-                    (try
-                      (parse-quantity to-str)
-                      [to-str quantity-str]
-                      (catch Exception _
-                        [quantity-str to-str]))))
+                [quantity-str to-str] (try-swap-sides quantity-str to-str)
                 ;; Check if the target side also has a quantity
-                to-has-number?
-                (try
-                  (parse-quantity to-str)
-                  true
-                  (catch Exception _ false))]
+                to-has-number? (try-parse-quantity to-str)]
             (if to-has-number?
               (throw (ex-info "Both sides have quantities"
                               {:error :ambiguous-quantities
@@ -842,10 +888,17 @@
                               approx? (assoc :approx? true)
                               format (assoc :format format))]
                 request)))))
-      (catch clojure.lang.ExceptionInfo ex
-        (or (parse-error original ex)
-            {:error :unparseable
-             :phrase original}))
-      (catch Exception _
-        {:error :unparseable
-         :phrase original}))))
+      #?(:clj (catch clojure.lang.ExceptionInfo ex
+                (or (parse-error original ex)
+                    {:error :unparseable
+                     :phrase original}))
+         :cljs (catch ExceptionInfo ex
+                 (or (parse-error original ex)
+                     {:error :unparseable
+                      :phrase original})))
+      #?(:clj (catch Exception _
+                {:error :unparseable
+                 :phrase original})
+         :cljs (catch :default _
+                 {:error :unparseable
+                  :phrase original})))))
