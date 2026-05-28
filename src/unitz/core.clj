@@ -109,6 +109,22 @@
          :dimension {:time 1}
          :factor    86400}
 
+   :week {:kind      :time
+          :dimension {:time 1}
+          :factor    604800}
+
+   :year {:kind      :time
+          :dimension {:time 1}
+          :factor    31557600}
+
+   :century {:kind      :time
+             :dimension {:time 1}
+             :factor    3155760000}
+
+   :millennium {:kind      :time
+                :dimension {:time 1}
+                :factor    31557600000}
+
    ;; -------------------------
    ;; Speed
    ;; -------------------------
@@ -401,7 +417,10 @@
    :hour :hr
    :hours :hr
    :second :s
-   :seconds :s})
+   :seconds :s
+   :year :yr
+   :years :yr
+   :week :week})
 
 (defn canonical-unit [u]
   (get canonical-units u u))
@@ -457,6 +476,10 @@
    :min  {:dim {:time 1} :scale 60M}
    :hr   {:dim {:time 1} :scale 3600M}
    :day  {:dim {:time 1} :scale 86400M}
+   :week {:dim {:time 1} :scale 604800M}
+   :yr   {:dim {:time 1} :scale 31557600M}
+   :century {:dim {:time 1} :scale 3155760000M}
+   :millennium {:dim {:time 1} :scale 31557600000M}
 
    ;; Volume as length^3, using cubic meters as base.
    :l    {:dim {:length 3} :scale 0.001M}

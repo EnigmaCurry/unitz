@@ -82,6 +82,20 @@
    "day" :day
    "days" :day
 
+   "week" :week
+   "weeks" :week
+   "wk" :week
+
+   "yr" :yr
+   "year" :yr
+   "years" :yr
+
+   "century" :century
+   "centuries" :century
+
+   "millennium" :millennium
+   "millennia" :millennium
+
    "cup" :cup
    "cups" :cup
 
