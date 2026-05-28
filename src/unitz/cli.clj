@@ -5,13 +5,20 @@
             [unitz.parser :as parser])
   (:gen-class))
 
-(defn format-number [x]
-  (cond
-    (instance? java.math.BigDecimal x)
-    (.toPlainString (.stripTrailingZeros ^java.math.BigDecimal x))
+(defn format-number
+  ([x] (format-number x nil))
+  ([x precision]
+   (if precision
+     (let [bd (if (instance? java.math.BigDecimal x)
+                x
+                (BigDecimal. (double x)))]
+       (.toPlainString (.setScale bd (int precision) java.math.RoundingMode/HALF_UP)))
+     (cond
+       (instance? java.math.BigDecimal x)
+       (.toPlainString (.stripTrailingZeros ^java.math.BigDecimal x))
 
-    :else
-    (str x)))
+       :else
+       (str x)))))
 
 (defn format-error [{:keys [error unit phrase] :as err}]
   (case error
@@ -27,7 +34,7 @@
   (when-let [[_ lhs rhs] (re-find #"(?i)^(.+?)\s+(?:in|to)\s+(.+?)$" input)]
     [(str/trim lhs) (str/trim rhs)]))
 
-(defn process-request-text [input]
+(defn process-request-text [input precision]
   (let [parsed (parser/parse-request input)
         result (u/convert-request parsed)]
     (if (and (map? result) (contains? result :error))
@@ -35,7 +42,7 @@
       (let [[lhs rhs] (split-input-parts input)
             has-number? #(re-find #"\d|^(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|half|quarter)\b" (str/lower-case (or % "")))
             swapped? (and (not (has-number? lhs)) (has-number? rhs))]
-        {:result (format-number result)
+        {:result (format-number result precision)
          :from (if swapped? rhs lhs)
          :target (if swapped? lhs rhs)}))))
 
@@ -49,18 +56,34 @@
     "  unitz 12 feet in yards"
     "  unitz 2 cubic yards to US liquid gallons"]))
 
+(defn parse-precision [tokens]
+  (loop [remaining tokens
+         precision nil
+         result []]
+    (if (empty? remaining)
+      [precision result]
+      (let [t (first remaining)]
+        (if (and (or (= "-p" t) (= "--precision" t))
+                 (second remaining))
+          (recur (drop 2 remaining)
+                 (Long/parseLong (second remaining))
+                 result)
+          (recur (rest remaining) precision (conj result t)))))))
+
 (defn -main [& args]
   (let [input (str/trim (str/join " " args))
         tokens (str/split input #"\s+")
         verbose? (some #{"-v" "--verbose"} tokens)
-        input (str/trim (str/join " " (remove #{"-v" "--verbose"} tokens)))]
+        tokens (vec (remove #{"-v" "--verbose"} tokens))
+        [precision tokens] (parse-precision tokens)
+        input (str/trim (str/join " " tokens))]
     (if (str/blank? input)
       (do
         (binding [*out* *err*]
           (println (usage)))
         (System/exit 1))
       (try
-        (let [{:keys [error result from target]} (process-request-text input)]
+        (let [{:keys [error result from target]} (process-request-text input precision)]
           (if error
             (do
               (binding [*out* *err*]
