@@ -53,9 +53,14 @@
       flex-shrink: 0;
     }
 
-    header input[type="text"] {
+    .input-wrapper {
+      position: relative;
       flex: 1;
       max-width: 600px;
+    }
+
+    .input-wrapper input[type="text"] {
+      width: 100%;
       padding: 0.5rem 0.75rem;
       font-size: 1rem;
       background: var(--bg);
@@ -66,17 +71,47 @@
       transition: border-color 0.15s;
     }
 
-    header input[type="text"]:focus {
+    .input-wrapper input[type="text"]:focus {
       border-color: var(--accent);
     }
 
-    header input[type="text"]::placeholder {
+    .input-wrapper input[type="text"]::placeholder {
       color: var(--text-muted);
     }
 
+    .preview-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      margin-top: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      z-index: 20;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      font-family: "SF Mono", "Fira Code", "Fira Mono", monospace;
+      font-size: 0.95rem;
+    }
+
+    .preview-result {
+      color: var(--green);
+      font-weight: 600;
+    }
+
+    .preview-error {
+      color: var(--red);
+      font-size: 0.85rem;
+    }
+
     button.convert {
-      padding: 0.5rem 1rem;
-      font-size: 1rem;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.9rem;
       font-weight: 600;
       background: var(--accent);
       color: var(--bg);

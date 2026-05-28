@@ -118,17 +118,24 @@
    text])
 
 (defn app []
-  (let [{:keys [input history]} @state]
+  (let [{:keys [input history]} @state
+        preview (when-not (str/blank? input) (evaluate input))]
     [:<>
      [:header
       [:h1 "calc"]
-      [:input {:type "text"
-               :value input
-               :placeholder "e.g. 12 feet in yards"
-               :auto-focus true
-               :on-change #(swap! state assoc :input (.. % -target -value))
-               :on-key-down on-keydown}]
-      [:button.convert {:on-click evaluate!} "="]
+      [:div.input-wrapper
+       [:input {:type "text"
+                :value input
+                :placeholder "e.g. 12 feet in yards"
+                :auto-focus true
+                :on-change #(swap! state assoc :input (.. % -target -value))
+                :on-key-down on-keydown}]
+       (when preview
+         [:div.preview-dropdown
+          (if (:error preview)
+            [:span.preview-error (:error preview)]
+            [:span.preview-result (str "= " (:result preview))])
+          [:button.convert {:on-click evaluate!} "="]])]
       [:button.clear {:on-click #(when (js/confirm "Clear all history?")
                                     (reset! state {:input "" :result nil :error nil :history []})
                                     (save-history! []))} "CE"]

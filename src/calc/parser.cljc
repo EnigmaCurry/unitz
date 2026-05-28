@@ -30,6 +30,21 @@
    "centimeter" :cm
    "centimeters" :cm
 
+   "mm" :mm
+   "millimeter" :mm
+   "millimeters" :mm
+
+   "um" :um
+   "μm" :um
+   "micrometer" :um
+   "micrometers" :um
+   "micron" :um
+   "microns" :um
+
+   "nm" :nm
+   "nanometer" :nm
+   "nanometers" :nm
+
    "gal" :gal
    "gallon" :gal
    "gallons" :gal
@@ -45,6 +60,12 @@
    "milliliters" :ml
    "millilitre" :ml
    "millilitres" :ml
+
+   "cc" :cc
+   "cubic centimeter" :cc
+   "cubic centimeters" :cc
+   "cubic centimetre" :cc
+   "cubic centimetres" :cc
 
    "lb" :lb
    "lbs" :lb
@@ -99,8 +120,21 @@
    "milennium" :millennium
    "milennia" :millennium
 
+   "fl oz" :floz
+   "floz" :floz
+   "fluid ounce" :floz
+   "fluid ounces" :floz
+
    "cup" :cup
    "cups" :cup
+
+   "pt" :pt
+   "pint" :pt
+   "pints" :pt
+
+   "qt" :qt
+   "quart" :qt
+   "quarts" :qt
 
    "tbsp" :tbsp
    "tablespoon" :tbsp

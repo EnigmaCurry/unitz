@@ -212,6 +212,9 @@
   {:m    {:dim {:length 1} :scale (->bigdec 1)}
    :km   {:dim {:length 1} :scale (->bigdec 1000)}
    :cm   {:dim {:length 1} :scale (->bigdec 0.01)}
+   :mm   {:dim {:length 1} :scale (->bigdec 0.001)}
+   :um   {:dim {:length 1} :scale (->bigdec 0.000001)}
+   :nm   {:dim {:length 1} :scale (->bigdec 0.000000001)}
    :ft   {:dim {:length 1} :scale (->bigdec 0.3048)}
    :yd   {:dim {:length 1} :scale (->bigdec 0.9144)}
    :in   {:dim {:length 1} :scale (->bigdec 0.0254)}
@@ -234,10 +237,14 @@
    ;; Volume as length^3, using cubic meters as base.
    :l    {:dim {:length 3} :scale (->bigdec 0.001)}
    :ml   {:dim {:length 3} :scale (->bigdec 0.000001)}
+   :cc   {:dim {:length 3} :scale (->bigdec 0.000001)}
 
    ;; US liquid gallon.
    :gal  {:dim {:length 3} :scale (->bigdec 0.003785411784)}
+   :floz {:dim {:length 3} :scale (->bigdec 0.0000295735295625)}
    :cup  {:dim {:length 3} :scale (->bigdec 0.0002365882365)}
+   :pt   {:dim {:length 3} :scale (->bigdec 0.000473176473)}
+   :qt   {:dim {:length 3} :scale (->bigdec 0.000946352946)}
    :tbsp {:dim {:length 3} :scale (->bigdec 0.00001478676478125)}
    :tsp  {:dim {:length 3} :scale (->bigdec 0.00000492892159375)}
 
