@@ -13,13 +13,22 @@
     :else
     (str x)))
 
+(defn format-error [{:keys [error unit phrase] :as err}]
+  (case error
+    :unknown-unit (str "Error: Unknown unit \"" unit "\"")
+    :unparseable (str "Error: Could not parse \"" phrase "\"")
+    :incompatible-dimensions (str "Error: Incompatible dimensions")
+    :unsupported-operation (str "Error: Unsupported operation")
+    :invalid-request (str "Error: Invalid request")
+    (str "Error: " (pr-str err))))
+
 (defn process-request-text [input]
   (let [result (-> input
                    parser/parse-request
                    u/convert-request)]
     (if (and (map? result) (contains? result :error))
-      result
-      (format-number result))))
+      {:error (format-error result)}
+      {:result (format-number result)})))
 
 (defn usage []
   (str/join
@@ -39,7 +48,13 @@
           (println (usage)))
         (System/exit 1))
       (try
-        (println (process-request-text input))
+        (let [{:keys [error result]} (process-request-text input)]
+          (if error
+            (do
+              (binding [*out* *err*]
+                (println error))
+              (System/exit 1))
+            (println result)))
         (catch Exception e
           (binding [*out* *err*]
             (println "Error:" (.getMessage e)))

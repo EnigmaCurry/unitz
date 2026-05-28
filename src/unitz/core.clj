@@ -628,6 +628,9 @@
 
 (defn convert-request [{:keys [op quantity to] :as request}]
   (cond
+    (error? request)
+    request
+
     (not= op :convert)
     {:error :unsupported-operation
      :op op}
