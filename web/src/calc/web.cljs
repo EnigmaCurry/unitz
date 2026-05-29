@@ -7,6 +7,40 @@
             [calc.parser :as parser]
             [clojure.string :as str]))
 
+(defn- format-unit-label
+  "Format an exponent-map unit like {:ft 2} as 'ft²'."
+  [unit]
+  (cond
+    (keyword? unit)
+    (get units/unit-short-names unit (name unit))
+
+    (map? unit)
+    (let [pos (into {} (filter (fn [[_ v]] (pos? v))) unit)
+          neg (into {} (filter (fn [[_ v]] (neg? v))) unit)]
+      (str (str/join "·" (for [[k v] pos]
+                           (let [label (get units/unit-short-names k (name k))]
+                             (if (= v 1) label (str label "^" v)))))
+           (when (seq neg)
+             (str "/" (str/join "·" (for [[k v] neg]
+                                     (let [label (get units/unit-short-names k (name k))
+                                           exp (- v)]
+                                       (if (= exp 1) label (str label "^" exp)))))))))
+
+    :else (str unit)))
+
+(defn- format-quantity-label
+  "Build a canonical display string like '2 m/s' from a parsed quantity."
+  [quantity]
+  (cond
+    (map? quantity)
+    (let [val-str (fmt/format-number (:value quantity) nil)]
+      (str val-str " " (format-unit-label (:unit quantity))))
+
+    (vector? quantity)
+    (str/join " " (map format-quantity-label quantity))
+
+    :else (str quantity)))
+
 (defn evaluate [input fmt-opts]
   (let [input (str/trim input)]
     (when-not (str/blank? input)
@@ -34,9 +68,10 @@
                :result (str (fmt/format-number (:value result) effective-fmt) " " (:unit-label result))}
 
               :else
-              (let [[display-input] (parser/extract-format input)
-                    {:keys [from target]} (parser/split-display-parts display-input)]
-                (if (some? from)
+              (let [from (format-quantity-label (:quantity parsed))
+                    target (when (not= :auto (:to parsed))
+                             (format-unit-label (:to parsed)))]
+                (if target
                   {:from from
                    :target target
                    :result (fmt/format-number (:value result) effective-fmt)}
