@@ -72,6 +72,18 @@
       (is (nil? error))
       (is (= "0.33" result)))))
 
+(deftest ratio-display
+  (testing "ratios show fraction and approximation by default"
+    (let [{:keys [result error]} (cli/process-request-text "21349 /234234" nil)]
+      (is (nil? error))
+      (is (re-find #"21349/234234 = " result))))
+
+  (testing "ratios show only decimal with :numeric true"
+    (let [{:keys [result error]} (cli/process-request-text "21349 /234234" {:numeric true})]
+      (is (nil? error))
+      (is (not (re-find #"=" result)))
+      (is (re-find #"^0\.\d+" result)))))
+
 (deftest display-uses-canonical-units
   (testing "long unit names become short forms"
     (let [{:keys [from target error]} (cli/process-request-text "12 feet in yards" nil)]

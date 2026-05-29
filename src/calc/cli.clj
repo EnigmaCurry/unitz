@@ -415,7 +415,7 @@
 
         :else
         (if-let [math-result (parser/parse-math input)]
-          (println (fmt/format-number math-result fmt-opts))
+          (println (fmt/format-number math-result (if numeric? (assoc (or fmt-opts {}) :numeric true) fmt-opts)))
           (let [parsed (parser/parse-request input)]
             (when (and numeric? (= :auto (:to parsed)))
               (binding [*out* *err*]
