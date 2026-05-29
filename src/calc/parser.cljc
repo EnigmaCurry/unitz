@@ -433,11 +433,17 @@
       (empty? tokens)
       (throw (ex-info "Missing unit" {:error :missing-unit}))
 
-      (#{"square" "sq"} (first lower-tokens))
+      (#{"square" "sq" "squared"} (first lower-tokens))
       (unit-map (parse-unit-phrase (str/join " " (rest tokens))) 2)
 
-      (#{"cubic" "cu"} (first lower-tokens))
+      (#{"cubic" "cu" "cubed"} (first lower-tokens))
       (unit-map (parse-unit-phrase (str/join " " (rest tokens))) 3)
+
+      (#{"square" "squared"} (last lower-tokens))
+      (unit-map (parse-unit-phrase (str/join " " (butlast tokens))) 2)
+
+      (#{"cubic" "cubed"} (last lower-tokens))
+      (unit-map (parse-unit-phrase (str/join " " (butlast tokens))) 3)
 
       (some #{"per"} lower-tokens)
       (let [i (vec-index-of lower-tokens "per")

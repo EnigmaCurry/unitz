@@ -282,4 +282,29 @@
   (testing "sq ft as alias for square feet"
     (let [{:keys [result target]} (cli/process-request-text "1 sq ft in sq m" nil)]
       (is (some? result))
-      (is (= "m2" target)))))
+      (is (= "m2" target))))
+
+  (testing "squared yard (prefix form)"
+    (let [{:keys [result target]} (cli/process-request-text "1 ft*ft in squared yard" nil)]
+      (is (some? result))
+      (is (= "yd2" target))))
+
+  (testing "yard square (suffix form)"
+    (let [{:keys [result target]} (cli/process-request-text "1 ft*ft in yard square" nil)]
+      (is (some? result))
+      (is (= "yd2" target))))
+
+  (testing "yard squared (suffix form)"
+    (let [{:keys [result target]} (cli/process-request-text "1 ft*ft in yard squared" nil)]
+      (is (some? result))
+      (is (= "yd2" target))))
+
+  (testing "cu ft as alias for cubic feet"
+    (let [{:keys [result target]} (cli/process-request-text "1 cu ft in cu m" nil)]
+      (is (some? result))
+      (is (= "m3" target))))
+
+  (testing "foot cubed (suffix form)"
+    (let [{:keys [result target]} (cli/process-request-text "1 foot cubed in meter cubed" nil)]
+      (is (some? result))
+      (is (= "m3" target)))))
