@@ -74,6 +74,8 @@
                         :error nil
                         :history (load-history)
                         :fmt-opts (load-fmt-opts)
+                        :hist-index -1
+                        :saved-input ""
                         :menu-open false
                         :theme (load-theme)
                         :page :calc}))
@@ -228,8 +230,35 @@
           (js/setTimeout scroll-log-to-top 0))))))
 
 (defn on-keydown [e]
-  (when (= "Enter" (.-key e))
-    (evaluate!)))
+  (let [key (.-key e)
+        {:keys [history hist-index saved-input input]} @state]
+    (case key
+      "Enter"
+      (do (evaluate!)
+          (swap! state assoc :hist-index -1 :saved-input ""))
+
+      "ArrowUp"
+      (let [max-idx (dec (count history))
+            new-idx (min (inc hist-index) max-idx)]
+        (when (and (seq history) (not= new-idx hist-index))
+          (.preventDefault e)
+          (when (= hist-index -1)
+            (swap! state assoc :saved-input input))
+          (swap! state assoc
+                 :hist-index new-idx
+                 :input (:input (nth history new-idx)))))
+
+      "ArrowDown"
+      (when (>= hist-index 0)
+        (.preventDefault e)
+        (let [new-idx (dec hist-index)]
+          (if (neg? new-idx)
+            (swap! state assoc :hist-index -1 :input saved-input)
+            (swap! state assoc
+                   :hist-index new-idx
+                   :input (:input (nth history new-idx))))))
+
+      nil)))
 
 (defn example-chip [text]
   [:button.example
@@ -264,7 +293,7 @@
        [:input (cond-> {:type "text"
                         :value input
                         :auto-focus true
-                        :on-change #(swap! state assoc :input (.. % -target -value))
+                        :on-change #(swap! state assoc :input (.. % -target -value) :hist-index -1)
                         :on-key-down on-keydown}
                  (empty? history) (assoc :placeholder "e.g. 100GB / 900Mbps"))]
        (when preview
