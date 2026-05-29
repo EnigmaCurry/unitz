@@ -41,6 +41,16 @@
   (testing "decimal result"
     (let [{:keys [result error]} (cli/process-request-text "1 / 3" nil)]
       (is (nil? error))
+      (is (some? result))))
+
+  (testing "non-terminating decimal division does not throw"
+    (let [{:keys [result error]} (cli/process-request-text "(2+2.5) / 77" nil)]
+      (is (nil? error))
+      (is (some? result))))
+
+  (testing "decimal division with repeating result"
+    (let [{:keys [result error]} (cli/process-request-text "10.0 / 3" nil)]
+      (is (nil? error))
       (is (some? result)))))
 
 (deftest math-does-not-break-unit-conversions

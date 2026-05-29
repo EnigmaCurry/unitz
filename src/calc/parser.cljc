@@ -223,6 +223,12 @@
         [(math-pow base exp) p1])
       [base p0])))
 
+(defn- math-div [a b]
+  #?(:clj  (try (/ a b)
+                (catch ArithmeticException _
+                  (.divide (bigdec a) (bigdec b) (java.math.MathContext. 34))))
+     :cljs (/ a b)))
+
 (defn- math-parse-term [tokens pos]
   (when-let [[v0 p0] (math-parse-power tokens pos)]
     (loop [acc v0, p p0]
@@ -231,7 +237,7 @@
                (#{"*" "/"} (second (nth tokens p))))
         (let [op (second (nth tokens p))]
           (if-let [[v2 p2] (math-parse-power tokens (inc p))]
-            (recur (if (= "*" op) (* acc v2) (/ acc v2)) p2)
+            (recur (if (= "*" op) (* acc v2) (math-div acc v2)) p2)
             [acc p]))
         [acc p]))))
 
