@@ -147,7 +147,7 @@
     [:button.back-btn
      {:on-click #(swap! state assoc :page :calc)}
      "\u2190 Back"]
-    [:h2 "Available Units"]]
+    [:h2 "Help"]]
    [:p.help-intro
     "All conversions run 100% client-side in your browser \u2014 nothing is sent to a server. "
     "This app is a PWA (Progressive Web App) \u2014 you can install it to your device from your browser menu and use it offline. "
@@ -173,6 +173,7 @@
      [:div.unit-row [:span.unit-sym "/s N"] [:span.unit-label "Set significant figures to N"]]
      [:div.unit-row [:span.unit-sym "/s"] [:span.unit-label "Clear sig-figs setting"]]
      [:div.unit-row [:span.unit-sym "clear"] [:span.unit-label "Clear all history"]]]]
+   [:h2 {:style {:margin-top "1.5rem" :margin-bottom "0.5rem" :font-size "1.1rem" :color "var(--accent)"}} "Available Units"]
    (for [{group-name :name :keys [description units]} unit-groups]
      ^{:key group-name}
      [:div.unit-group
