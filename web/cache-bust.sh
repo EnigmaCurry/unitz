@@ -28,12 +28,18 @@ awk -v js_file="js/main.${HASH}.js" -v hash="${HASH}" '
     print "</script>"
     next
   }
-  # Skip lines not useful for standalone file
-  /serviceWorker/ { next }
+  # Strip PWA-related tags not useful for standalone file
   /rel="manifest"/ { next }
   /apple-touch-icon/ { next }
   /apple-mobile-web-app/ { next }
   /name="theme-color"/ { next }
+  # Replace SW registration block with unregistration (cleans up stale workers)
+  /serviceWorker\.register/ {
+    print "      navigator.serviceWorker.getRegistrations().then(function(regs) {"
+    print "        regs.forEach(function(r) { r.unregister(); });"
+    print "      });"
+    next
+  }
   { print }
 ' index.html.template > calc.html
 echo "Cache-busted with hash: ${HASH}"
