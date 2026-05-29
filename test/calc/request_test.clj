@@ -1,6 +1,7 @@
 (ns calc.request-test
   (:require [clojure.test :refer [deftest testing is]]
-            [calc.core :as u]))
+            [calc.core :as u]
+            [calc.cli :as cli]))
 
 (deftest evaluates-simple-conversion-request
   (testing "basic scalar request"
@@ -123,4 +124,41 @@
            (u/convert-request
             {:op :convert
              :quantity {:value 5N :unit :s}
+             :to :m}))))
+
+  (testing "length to temperature returns error, not exception"
+    (is (= {:error :incompatible-dimensions
+            :from {:length 1}
+            :to {:temperature 1}}
+           (u/convert-request
+            {:op :convert
+             :quantity {:value 5N :unit :m}
+             :to :degC}))))
+
+  (testing "temperature to length returns error, not exception"
+    (is (= {:error :incompatible-dimensions
+            :from {:temperature 1}
+            :to {:length 1}}
+           (u/convert-request
+            {:op :convert
+             :quantity {:value 100N :unit :degC}
              :to :m})))))
+
+(deftest natural-language-formatting
+  (testing "rounded to N decimals applies rounding"
+    (let [{:keys [result target]} (cli/process-request-text "12 feet in yards rounded to 2 decimals" nil)]
+      (is (= "4.00" result))
+      (is (= "yards" target))))
+
+  (testing "with N sig figs applies significant figures"
+    (let [{:keys [result target]} (cli/process-request-text "5 miles in km with 3 sig figs" nil)]
+      (is (= "8.05" result))
+      (is (= "km" target))))
+
+  (testing "CLI flags override parsed format"
+    (let [{:keys [result]} (cli/process-request-text "12 feet in yards rounded to 2 decimals" {:round 4})]
+      (is (= "4.0000" result))))
+
+  (testing "no format clause leaves result unformatted"
+    (let [{:keys [result]} (cli/process-request-text "12 feet in yards" nil)]
+      (is (= "4" result)))))

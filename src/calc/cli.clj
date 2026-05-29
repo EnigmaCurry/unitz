@@ -115,13 +115,13 @@
 
 (defn format-number
   ([x] (format-number x nil))
-  ([x {:keys [precision sig-figs] :as opts}]
+  ([x {:keys [round sig-figs] :as opts}]
    (cond
-     precision
+     round
      (let [bd (if (instance? java.math.BigDecimal x)
                 x
                 (BigDecimal. (double x)))]
-       (.toPlainString (.setScale bd (int precision) java.math.RoundingMode/HALF_UP)))
+       (.toPlainString (.setScale bd (int round) java.math.RoundingMode/HALF_UP)))
 
      sig-figs
      (let [bd (if (instance? java.math.BigDecimal x)
@@ -168,6 +168,8 @@
 
 (defn process-request-text [input fmt-opts]
   (let [parsed (parser/parse-request input)
+        ;; Merge parsed natural-language format with CLI flag overrides
+        effective-fmt (merge (:format parsed) fmt-opts)
         result (u/convert-request parsed)]
     (cond
       (and (map? result) (contains? result :error))
@@ -175,15 +177,16 @@
 
       ;; Auto-scaled result (no target unit specified)
       (and (map? result) (contains? result :unit-label))
-      {:result (str (format-number (:value result) fmt-opts)
+      {:result (str (format-number (:value result) effective-fmt)
                     (when (:unit-label result)
                       (str " " (:unit-label result))))
        :from input
        :target nil}
 
       :else
-      (let [[from target] (split-input-parts input)]
-        {:result (format-number result fmt-opts)
+      (let [[display-input _] (parser/extract-format input)
+            [from target] (split-input-parts display-input)]
+        {:result (format-number result effective-fmt)
          :from from
          :target target}))))
 
@@ -214,13 +217,13 @@
             (when (:sig-figs opts)
               (throw (ex-info "Cannot use both -p and -s" {})))
             (recur (drop 2 remaining)
-                   (assoc (or opts {}) :precision (Long/parseLong (second remaining)))
+                   (assoc (or opts {}) :round (Long/parseLong (second remaining)))
                    result))
 
           (and (or (= "-s" t) (= "--sig-figs" t))
                (second remaining))
           (do
-            (when (:precision opts)
+            (when (:round opts)
               (throw (ex-info "Cannot use both -p and -s" {})))
             (recur (drop 2 remaining)
                    (assoc (or opts {}) :sig-figs (Long/parseLong (second remaining)))

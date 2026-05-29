@@ -5,18 +5,29 @@
             [calc.parser :as parser]
             [clojure.string :as str]))
 
-(defn format-number [x]
-  (cond
-    (js/Number.isInteger x)
-    (str (int x))
+(defn format-number
+  ([x] (format-number x nil))
+  ([x {:keys [round sig-figs]}]
+   (cond
+     round
+     (.toFixed (js/Number x) round)
 
-    :else
-    (let [s (.toPrecision (js/Number x) 10)]
-      (if (str/includes? s ".")
-        (-> s
-            (str/replace #"0+$" "")
-            (str/replace #"\.$" ""))
-        s))))
+     sig-figs
+     (let [s (.toPrecision (js/Number x) sig-figs)]
+       (if (str/includes? s ".")
+         (-> s (str/replace #"0+$" "") (str/replace #"\.$" ""))
+         s))
+
+     (js/Number.isInteger x)
+     (str (int x))
+
+     :else
+     (let [s (.toPrecision (js/Number x) 10)]
+       (if (str/includes? s ".")
+         (-> s
+             (str/replace #"0+$" "")
+             (str/replace #"\.$" ""))
+         s)))))
 
 (defn format-error [{:keys [error unit phrase]}]
   (case error
@@ -56,6 +67,7 @@
           {:result (format-number math-result)}
           ;; Then try as unit conversion
           (let [parsed (parser/parse-request input)
+                fmt (:format parsed)
                 result (core/convert-request parsed)
                 {:keys [from target]} (split-input input)]
             (cond
@@ -64,15 +76,15 @@
 
               (:unit-label result)
               {:from input
-               :result (str (format-number (:value result)) " " (:unit-label result))}
+               :result (str (format-number (:value result) fmt) " " (:unit-label result))}
 
               (some? from)
               {:from from
                :target target
-               :result (format-number result)}
+               :result (format-number result fmt)}
 
               :else
-              {:result (format-number result)})))
+              {:result (format-number result fmt)})))
         (catch :default e
           {:error (if-let [data (.-data e)]
                     (format-error (js->clj data :keywordize-keys true))

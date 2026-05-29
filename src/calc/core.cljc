@@ -49,13 +49,15 @@
        (js/parseFloat (.toPrecision (js/Number x) 12)))))
 
 (defn- ->bigdec
-  "Convert a number to BigDecimal on JVM (using valueOf for exact representation).
+  "Convert a number to BigDecimal on JVM (using string representation for precision).
    Identity on CLJS."
   [x]
   #?(:clj
-     (if (integer? x)
-       (BigDecimal/valueOf (long x))
-       (BigDecimal/valueOf (double x)))
+     (cond
+       (instance? BigDecimal x) x
+       (integer? x) (BigDecimal/valueOf (long x))
+       (ratio? x)   (BigDecimal/valueOf (long (numerator x)))
+       :else         (BigDecimal. (str x)))
      :cljs x))
 
 ;; ============================================================================
@@ -228,22 +230,22 @@
             :aliases ["B" "byte" "bytes"]}
    :KB     {:dim {:data 1} :scale (->bigdec 1000)
             :name "KB" :short "KB" :auto-scale true
-            :aliases ["KB" "kb" "kilobyte" "kilobytes"]}
+            :aliases ["KB" "kilobyte" "kilobytes"]}
    :MB     {:dim {:data 1} :scale (->bigdec 1000000)
             :name "MB" :short "MB" :auto-scale true
-            :aliases ["MB" "mb" "megabyte" "megabytes"]}
+            :aliases ["MB" "megabyte" "megabytes"]}
    :GB     {:dim {:data 1} :scale (->bigdec 1000000000)
             :name "GB" :short "GB" :auto-scale true
-            :aliases ["GB" "gb" "gigabyte" "gigabytes"]}
+            :aliases ["GB" "gigabyte" "gigabytes"]}
    :TB     {:dim {:data 1} :scale (->bigdec 1000000000000)
             :name "TB" :short "TB" :auto-scale true
-            :aliases ["TB" "tb" "terabyte" "terabytes" "terrabyte" "terrabytes"]}
+            :aliases ["TB" "terabyte" "terabytes" "terrabyte" "terrabytes"]}
    :PB     {:dim {:data 1} :scale (->bigdec 1000000000000000)
             :name "PB" :short "PB" :auto-scale true
-            :aliases ["PB" "pb" "petabyte" "petabytes"]}
+            :aliases ["PB" "petabyte" "petabytes"]}
    :EB     {:dim {:data 1} :scale (->bigdec 1000000000000000000)
             :name "EB" :short "EB"
-            :aliases ["EB" "eb" "exabyte" "exabytes"]}
+            :aliases ["EB" "exabyte" "exabytes"]}
    ;; Binary (IEC)
    :KiB    {:dim {:data 1} :scale (->bigdec 1024)
             :name "KiB" :short "KiB"
@@ -601,12 +603,13 @@
     :degF (c->f (k->c value))))
 
 (defn convert-temperature [value from-unit to-unit]
-  (normalize-number
-   (if-not (and (temperature-units from-unit)
-                (temperature-units to-unit))
-     {:error :incompatible-dimensions
-      :from {:temperature 1}
-      :to (:dim (unit-spec to-unit))}
+  (if-not (and (temperature-units from-unit)
+               (temperature-units to-unit))
+    (let [temp-dim {:temperature 1}
+          from-dim (if (temperature-units from-unit) temp-dim (:dim (unit-spec from-unit)))
+          to-dim   (if (temperature-units to-unit)   temp-dim (:dim (unit-spec to-unit)))]
+      {:error :incompatible-dimensions :from from-dim :to to-dim})
+    (normalize-number
      (-> value
          (temperature->kelvin from-unit)
          (kelvin->temperature to-unit)))))
