@@ -24,7 +24,7 @@ nix run github:EnigmaCurry/calc -- 12 feet in yards
 Install to your profile:
 
 ```bash
-nix profile install github:EnigmaCurry/calc
+nix profile add github:EnigmaCurry/calc
 calc 12 feet in yards
 ```
 
@@ -65,6 +65,9 @@ $ just calc 100 MB / 10 Mbps in seconds
 $ just calc 7 inches in feet as a fraction
 7 inches = 7/12 feet
 
+$ just calc -n 100GB / 900Mbps in days
+0.01028806584362
+
 $ just calc 2 + 2
 4
 
@@ -96,6 +99,7 @@ CLI flags (override natural language format):
 ```
 -p N, --precision N    Round to N decimal places
 -s N, --sig-figs N     Round to N significant figures
+-n,   --numeric        Output bare number only (requires explicit target unit)
 ```
 
 ## Supported syntax
