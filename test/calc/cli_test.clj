@@ -57,8 +57,8 @@
   (testing "unit conversion still works"
     (let [{:keys [result from target error]} (cli/process-request-text "12 feet in yards" nil)]
       (is (nil? error))
-      (is (= "12 feet" from))
-      (is (= "yards" target))
+      (is (= "12 ft" from))
+      (is (= "yd" target))
       (is (= "4" result))))
 
   (testing "temperature conversion still works"
@@ -72,23 +72,39 @@
       (is (nil? error))
       (is (= "0.33" result)))))
 
-(deftest display-normalizes-spacing
-  (testing "slash with trailing space"
-    (let [{:keys [from error]} (cli/process-request-text "2 meters/ second in kph" nil)]
+(deftest display-uses-canonical-units
+  (testing "long unit names become short forms"
+    (let [{:keys [from target error]} (cli/process-request-text "12 feet in yards" nil)]
       (is (nil? error))
-      (is (= "2 meters/second" from))))
+      (is (= "12 ft" from))
+      (is (= "yd" target))))
 
-  (testing "slash with surrounding spaces"
-    (let [{:keys [from error]} (cli/process-request-text "2 meters / second in kph" nil)]
-      (is (nil? error))
-      (is (= "2 meters/second" from))))
-
-  (testing "slash with excessive spaces"
-    (let [{:keys [from error]} (cli/process-request-text "2 meters/   second in kph" nil)]
-      (is (nil? error))
-      (is (= "2 meters/second" from))))
-
-  (testing "already compact slash is unchanged"
+  (testing "compound units use canonical short form"
     (let [{:keys [from error]} (cli/process-request-text "2 meters/second in kph" nil)]
       (is (nil? error))
-      (is (= "2 meters/second" from)))))
+      (is (= "2 m/s" from))))
+
+  (testing "slash with trailing space normalizes to canonical"
+    (let [{:keys [from error]} (cli/process-request-text "2 meters/ second in kph" nil)]
+      (is (nil? error))
+      (is (= "2 m/s" from))))
+
+  (testing "slash with surrounding spaces normalizes to canonical"
+    (let [{:keys [from error]} (cli/process-request-text "2 meters / second in kph" nil)]
+      (is (nil? error))
+      (is (= "2 m/s" from))))
+
+  (testing "slash with excessive spaces normalizes to canonical"
+    (let [{:keys [from error]} (cli/process-request-text "2 meters/   second in kph" nil)]
+      (is (nil? error))
+      (is (= "2 m/s" from))))
+
+  (testing "target unit uses canonical form"
+    (let [{:keys [target error]} (cli/process-request-text "2 m/s in kilometers per hour" nil)]
+      (is (nil? error))
+      (is (= "km/hr" target))))
+
+  (testing "mixed quantities use canonical form"
+    (let [{:keys [from error]} (cli/process-request-text "5 feet 11 inches in cm" nil)]
+      (is (nil? error))
+      (is (= "5 ft 11 in" from)))))

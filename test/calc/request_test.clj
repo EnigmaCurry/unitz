@@ -159,7 +159,7 @@
   (testing "rounded to N decimals applies rounding"
     (let [{:keys [result target]} (cli/process-request-text "12 feet in yards rounded to 2 decimals" nil)]
       (is (= "4.00" result))
-      (is (= "yards" target))))
+      (is (= "yd" target))))
 
   (testing "with N sig figs applies significant figures"
     (let [{:keys [result target]} (cli/process-request-text "5 miles in km with 3 sig figs" nil)]
@@ -177,12 +177,12 @@
   (testing "as a fraction formats exact results"
     (let [{:keys [result target]} (cli/process-request-text "7 inches in feet as a fraction" nil)]
       (is (= "7/12" result))
-      (is (= "feet" target))))
+      (is (= "ft" target))))
 
   (testing "as a fraction with integer result omits denominator"
     (let [{:keys [result target]} (cli/process-request-text "1 yard in feet as a fraction" nil)]
       (is (= "3" result))
-      (is (= "feet" target))))
+      (is (= "ft" target))))
 
   (testing "as a fraction uses mixed number form"
     (let [{:keys [result target]} (cli/process-request-text "5 feet 11 inches in cm as a fraction" nil)]
@@ -199,7 +199,7 @@
   (testing "scalar math with explicit target still works"
     (let [{:keys [result from target]} (cli/process-request-text "12 * 4 days in seconds" nil)]
       (is (= "4147200" result))
-      (is (= "seconds" target)))))
+      (is (= "s" target)))))
 
 (deftest scalar-math-with-compound-units
   (testing "12 * 4 miles/hour = 48 mi/hr"

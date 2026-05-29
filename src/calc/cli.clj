@@ -120,6 +120,40 @@
 (defn format-error [err]
   (str "Error: " (fmt/format-error err)))
 
+(defn- format-unit-label
+  "Format a unit keyword or exponent map as a short canonical string."
+  [unit]
+  (cond
+    (keyword? unit)
+    (get u/unit-short-names unit (name unit))
+
+    (map? unit)
+    (let [pos (into {} (filter (fn [[_ v]] (pos? v))) unit)
+          neg (into {} (filter (fn [[_ v]] (neg? v))) unit)]
+      (str (str/join "·" (for [[k v] pos]
+                           (let [label (get u/unit-short-names k (name k))]
+                             (if (= v 1) label (str label v)))))
+           (when (seq neg)
+             (str "/" (str/join "·" (for [[k v] neg]
+                                     (let [label (get u/unit-short-names k (name k))
+                                           exp (- v)]
+                                       (if (= exp 1) label (str label exp)))))))))
+
+    :else (str unit)))
+
+(defn- format-quantity-label
+  "Build a canonical display string like '2 m/s' from a parsed quantity."
+  [quantity]
+  (cond
+    (map? quantity)
+    (let [val-str (fmt/format-number (:value quantity) nil)]
+      (str val-str " " (format-unit-label (:unit quantity))))
+
+    (vector? quantity)
+    (str/join " " (map format-quantity-label quantity))
+
+    :else (str quantity)))
+
 (defn process-request-text [input fmt-opts]
   (if-let [math-result (parser/parse-math input)]
     {:result (fmt/format-number math-result fmt-opts)}
@@ -134,11 +168,9 @@
                           (str " " (:unit-label result))))
            :from input
            :target nil}
-          (let [[display-input _] (parser/extract-format input)
-                {:keys [from target]} (parser/split-display-parts (parser/clean-phrase display-input))]
-            {:result (fmt/format-number (:value result) effective-fmt)
-             :from from
-             :target target}))))))
+          {:result (fmt/format-number (:value result) effective-fmt)
+           :from (format-quantity-label (:quantity parsed))
+           :target (format-unit-label (:to parsed))})))))
 
 (defn usage []
   (str/join
