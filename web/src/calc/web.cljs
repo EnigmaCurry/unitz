@@ -196,7 +196,7 @@
     {:input (str "/" cmd) :error (str "Unknown command: /" cmd)}))
 
 (defn evaluate! []
-  (let [input (-> (:input @state) str/trim (str/replace #"\s+" " "))]
+  (let [input (parser/clean-phrase (:input @state))]
     (when-not (str/blank? input)
       (cond
         (clear-commands (str/lower-case input))
