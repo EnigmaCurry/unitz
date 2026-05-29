@@ -418,11 +418,17 @@
         gap: 0.5rem;
         padding: 0 3.5rem 0 0.5rem;
       }
-      h1 { display: none; }
       .input-wrapper input[type="text"] { font-size: 0.9rem; }
       html { zoom: 1.5; }
       .preview-bar { padding: 0.5rem 1rem; }
       .preview-spacer { display: none; }
+      header:has(.input-wrapper input:focus) {
+        padding: 0 0.5rem;
+      }
+      header:has(.input-wrapper input:focus) h1,
+      header:has(.input-wrapper input:focus) .menu-btn {
+        display: none;
+      }
     }
 
     /* Light theme */
