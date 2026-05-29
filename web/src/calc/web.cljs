@@ -361,10 +361,9 @@
              ^{:key idx}
              [:div.log-entry
               {:on-click (fn []
-                           (let [text (or from input)]
-                             (when text
-                               (.writeText js/navigator.clipboard text)
-                               (swap! state assoc :input text))))}
+                           (when input
+                             (.writeText js/navigator.clipboard input)
+                             (swap! state assoc :input input)))}
               [:span.log-input (or from input)]
               (cond
                 error
