@@ -4,31 +4,14 @@
             [calc.parser :as parser])
   (:gen-class))
 
-(def dim-labels
-  {{:length 1} "Length"
-   {:length 2} "Area"
-   {:length 3} "Volume"
-   {:mass 1} "Mass"
-   {:time 1} "Time"
-   {:data 1} "Data"
-   {:mass 1 :length 1 :time -2} "Force"
-   {:mass 1 :length 2 :time -2} "Energy"
-   {:mass 1 :length 2 :time -3} "Power"
-   {:mass 1 :length -1 :time -2} "Pressure"
-   {:mass 1 :length 2 :time -3 :current -1} "Electrical Potential"
-   {:current 1} "Electric Current"
-   {:mass 1 :length 2 :time -3 :current -2} "Resistance"
-   {:current 2 :time 4 :mass -1 :length -2} "Capacitance"
-   {:mass 1 :length 2 :time -2 :current -2} "Inductance"})
+(def dim-labels u/dim-categories)
 
 (defn reverse-aliases
   "Build a map from canonical unit keyword to sorted list of alias strings."
   []
-  (reduce-kv
-   (fn [m alias-str unit-kw]
-     (update m unit-kw (fnil conj []) alias-str))
-   {}
-   parser/unit-aliases))
+  (into {}
+        (for [[k v] u/unit-defs :when (:aliases v)]
+          [k (:aliases v)])))
 
 (def label->dim
   (into {} (map (fn [[k v]] [(str/lower-case v) k]) dim-labels)))

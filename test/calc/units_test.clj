@@ -3,16 +3,23 @@
             [calc.core :as u]))
 
 (deftest unit-registry-shape-test
-  (testing "every unit has dim and scale"
-    (doseq [[unit metadata] u/unit-defs]
+  (testing "every non-temperature unit has dim and scale"
+    (doseq [[unit metadata] u/unit-defs
+            :when (not (:temperature metadata))]
       (is (contains? metadata :dim)
           (str unit " is missing :dim"))
       (is (contains? metadata :scale)
-          (str unit " is missing :scale")))))
+          (str unit " is missing :scale"))))
+  (testing "temperature units are flagged"
+    (doseq [[unit metadata] u/unit-defs
+            :when (:temperature metadata)]
+      (is (not (contains? metadata :dim))
+          (str unit " is a temperature unit and should not have :dim")))))
 
 (deftest unit-registry-scale-test
-  (testing "every unit scale is numeric"
-    (doseq [[unit metadata] u/unit-defs]
+  (testing "every non-temperature unit scale is numeric"
+    (doseq [[unit metadata] u/unit-defs
+            :when (not (:temperature metadata))]
       (is (number? (:scale metadata))
           (str unit " has non-numeric :scale")))))
 

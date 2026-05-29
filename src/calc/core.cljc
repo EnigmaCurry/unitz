@@ -1,34 +1,11 @@
 (ns calc.core
-  #?(:clj (:import [java.math BigDecimal MathContext RoundingMode]))
-  (:require [calc.parser :as parser]))
+  #?(:clj (:import [java.math BigDecimal MathContext RoundingMode])))
 
 ;; ============================================================================
 ;; BigDecimal-based unit system (cross-platform request pipeline)
 ;; ============================================================================
 
 #?(:clj (def ^:private math-context MathContext/DECIMAL128))
-
-(def canonical-units
-  {:mile :mi
-   :miles :mi
-   :foot :ft
-   :feet :ft
-   :yard :yd
-   :yards :yd
-   :inch :in
-   :inches :in
-   :meter :m
-   :meters :m
-   :hour :hr
-   :hours :hr
-   :second :s
-   :seconds :s
-   :year :yr
-   :years :yr
-   :week :week})
-
-(defn canonical-unit [u]
-  (get canonical-units u u))
 
 (defn safe-div [a b]
   #?(:clj
@@ -81,141 +58,432 @@
        (BigDecimal/valueOf (double x)))
      :cljs x))
 
+;; ============================================================================
+;; Consolidated unit registry
+;; ============================================================================
+;;
+;; Each entry contains:
+;;   :dim        - dimension map (e.g. {:length 1})
+;;   :scale      - multiply by this to get SI base units
+;;   :name       - human-readable display name (for auto-scale output)
+;;   :short      - abbreviated name (for compound unit labels like W/day)
+;;   :aliases    - vector of English strings the parser recognizes
+;;   :auto-scale - true if this unit participates in auto-unit-selection
+;;   :temperature - true for temperature units (affine transforms, no dim/scale)
+
 (def unit-defs
-  ;; :scale means "multiply by this to get SI/base dimensions".
-  ;; Scales stored as plain numbers, converted to BigDecimal on JVM at load time.
-  {:m    {:dim {:length 1} :scale (->bigdec 1)}
-   :km   {:dim {:length 1} :scale (->bigdec 1000)}
-   :cm   {:dim {:length 1} :scale (->bigdec 0.01)}
-   :mm   {:dim {:length 1} :scale (->bigdec 0.001)}
-   :um   {:dim {:length 1} :scale (->bigdec 0.000001)}
-   :nm   {:dim {:length 1} :scale (->bigdec 0.000000001)}
-   :ft   {:dim {:length 1} :scale (->bigdec 0.3048)}
-   :yd   {:dim {:length 1} :scale (->bigdec 0.9144)}
-   :in   {:dim {:length 1} :scale (->bigdec 0.0254)}
-   :mi   {:dim {:length 1} :scale (->bigdec 1609.344)}
-   :nmi  {:dim {:length 1} :scale (->bigdec 1852)}
-   :fathom {:dim {:length 1} :scale (->bigdec 1.8288)}
-   :ly   {:dim {:length 1} :scale (->bigdec 9460730472580800)}
-   :au   {:dim {:length 1} :scale (->bigdec 149597870700)}
-   :pc   {:dim {:length 1} :scale (->bigdec 30856775814671900)}
+  {;; ---- Length ----
+   :m      {:dim {:length 1} :scale (->bigdec 1)
+            :name "meters" :short "m" :auto-scale true
+            :aliases ["m" "meter" "meters"]}
+   :km     {:dim {:length 1} :scale (->bigdec 1000)
+            :name "km" :short "km" :auto-scale true
+            :aliases ["km" "kilometer" "kilometers"]}
+   :cm     {:dim {:length 1} :scale (->bigdec 0.01)
+            :name "cm" :short "cm" :auto-scale true
+            :aliases ["cm" "centimeter" "centimeters"]}
+   :mm     {:dim {:length 1} :scale (->bigdec 0.001)
+            :name "mm" :short "mm" :auto-scale true
+            :aliases ["mm" "millimeter" "millimeters"]}
+   :um     {:dim {:length 1} :scale (->bigdec 0.000001)
+            :name "μm" :short "μm"
+            :aliases ["um" "μm" "micrometer" "micrometers" "micron" "microns"]}
+   :nm     {:dim {:length 1} :scale (->bigdec 0.000000001)
+            :name "nm" :short "nm"
+            :aliases ["nm" "nanometer" "nanometers"]}
+   :ft     {:dim {:length 1} :scale (->bigdec 0.3048)
+            :name "feet" :short "ft"
+            :aliases ["ft" "foot" "feet"]}
+   :yd     {:dim {:length 1} :scale (->bigdec 0.9144)
+            :name "yards" :short "yd"
+            :aliases ["yd" "yard" "yards"]}
+   :in     {:dim {:length 1} :scale (->bigdec 0.0254)
+            :name "inches" :short "in"
+            :aliases ["in" "inch" "inches"]}
+   :mi     {:dim {:length 1} :scale (->bigdec 1609.344)
+            :name "miles" :short "mi" :auto-scale true
+            :aliases ["mi" "mile" "miles"]}
+   :nmi    {:dim {:length 1} :scale (->bigdec 1852)
+            :name "nautical miles" :short "nmi"
+            :aliases ["nmi" "nautical mile" "nautical miles"]}
+   :fathom {:dim {:length 1} :scale (->bigdec 1.8288)
+            :name "fathoms" :short "fathom"
+            :aliases ["fathom" "fathoms"]}
+   :ly     {:dim {:length 1} :scale (->bigdec 9460730472580800)
+            :name "light-years" :short "ly"
+            :aliases ["ly" "lightyear" "lightyears" "light-year" "light-years"]}
+   :au     {:dim {:length 1} :scale (->bigdec 149597870700)
+            :name "AU" :short "AU"
+            :aliases ["au" "AU" "astronomical-unit" "astronomical-units"]}
+   :pc     {:dim {:length 1} :scale (->bigdec 30856775814671900)
+            :name "parsecs" :short "pc"
+            :aliases ["pc" "parsec" "parsecs"]}
 
-   :kg   {:dim {:mass 1} :scale (->bigdec 1)}
-   :g    {:dim {:mass 1} :scale (->bigdec 0.001)}
-   :mg   {:dim {:mass 1} :scale (->bigdec 0.000001)}
-   :ug   {:dim {:mass 1} :scale (->bigdec 0.000000001)}
-   :lb   {:dim {:mass 1} :scale (->bigdec 0.45359237)}
-   :oz   {:dim {:mass 1} :scale (->bigdec 0.028349523125)}
-   :tonne {:dim {:mass 1} :scale (->bigdec 1000)}
-   :ton  {:dim {:mass 1} :scale (->bigdec 907.18474)}
-   :stone {:dim {:mass 1} :scale (->bigdec 6.35029318)}
-   :ct   {:dim {:mass 1} :scale (->bigdec 0.0002)}
+   ;; ---- Mass ----
+   :kg     {:dim {:mass 1} :scale (->bigdec 1)
+            :name "kg" :short "kg" :auto-scale true
+            :aliases ["kg" "kilogram" "kilograms"]}
+   :g      {:dim {:mass 1} :scale (->bigdec 0.001)
+            :name "grams" :short "g" :auto-scale true
+            :aliases ["g" "gram" "grams"]}
+   :mg     {:dim {:mass 1} :scale (->bigdec 0.000001)
+            :name "mg" :short "mg"
+            :aliases ["mg" "milligram" "milligrams"]}
+   :ug     {:dim {:mass 1} :scale (->bigdec 0.000000001)
+            :name "μg" :short "μg"
+            :aliases ["ug" "μg" "mcg" "microgram" "micrograms"]}
+   :lb     {:dim {:mass 1} :scale (->bigdec 0.45359237)
+            :name "pounds" :short "lb" :auto-scale true
+            :aliases ["lb" "lbs" "pound" "pounds"]}
+   :oz     {:dim {:mass 1} :scale (->bigdec 0.028349523125)
+            :name "ounces" :short "oz"
+            :aliases ["oz" "ounce" "ounces"]}
+   :tonne  {:dim {:mass 1} :scale (->bigdec 1000)
+            :name "tonnes" :short "t"
+            :aliases ["tonne" "tonnes" "metric ton" "metric tons"]}
+   :ton    {:dim {:mass 1} :scale (->bigdec 907.18474)
+            :name "tons" :short "ton"
+            :aliases ["ton" "tons" "short ton" "short tons"]}
+   :stone  {:dim {:mass 1} :scale (->bigdec 6.35029318)
+            :name "stone" :short "st"
+            :aliases ["stone" "stones" "st"]}
+   :ct     {:dim {:mass 1} :scale (->bigdec 0.0002)
+            :name "carats" :short "ct"
+            :aliases ["ct" "carat" "carats"]}
 
-   :s    {:dim {:time 1} :scale (->bigdec 1)}
-   :min  {:dim {:time 1} :scale (->bigdec 60)}
-   :hr   {:dim {:time 1} :scale (->bigdec 3600)}
-   :day  {:dim {:time 1} :scale (->bigdec 86400)}
-   :week {:dim {:time 1} :scale (->bigdec 604800)}
-   :yr   {:dim {:time 1} :scale (->bigdec 31557600)}
-   :century {:dim {:time 1} :scale (->bigdec 3155760000)}
-   :millennium {:dim {:time 1} :scale (->bigdec 31557600000)}
+   ;; ---- Time ----
+   :s      {:dim {:time 1} :scale (->bigdec 1)
+            :name "seconds" :short "s" :auto-scale true
+            :aliases ["s" "sec" "second" "seconds"]}
+   :min    {:dim {:time 1} :scale (->bigdec 60)
+            :name "minutes" :short "min" :auto-scale true
+            :aliases ["min" "minute" "minutes"]}
+   :hr     {:dim {:time 1} :scale (->bigdec 3600)
+            :name "hours" :short "hr" :auto-scale true
+            :aliases ["h" "hr" "hrs" "hour" "hours"]}
+   :day    {:dim {:time 1} :scale (->bigdec 86400)
+            :name "days" :short "day" :auto-scale true
+            :aliases ["day" "days"]}
+   :week   {:dim {:time 1} :scale (->bigdec 604800)
+            :name "weeks" :short "wk" :auto-scale true
+            :aliases ["week" "weeks" "wk"]}
+   :yr     {:dim {:time 1} :scale (->bigdec 31557600)
+            :name "years" :short "yr" :auto-scale true
+            :aliases ["yr" "year" "years"]}
+   :century    {:dim {:time 1} :scale (->bigdec 3155760000)
+                :name "centuries" :short "century"
+                :aliases ["century" "centuries"]}
+   :millennium {:dim {:time 1} :scale (->bigdec 31557600000)
+                :name "millennia" :short "millennium"
+                :aliases ["millennium" "millennia" "millenium" "millenia"
+                          "milennium" "milennia"]}
 
-   ;; Volume as length^3, using cubic meters as base.
-   :l    {:dim {:length 3} :scale (->bigdec 0.001)}
-   :ml   {:dim {:length 3} :scale (->bigdec 0.000001)}
-   :cc   {:dim {:length 3} :scale (->bigdec 0.000001)}
+   ;; ---- Volume (length^3) ----
+   :l      {:dim {:length 3} :scale (->bigdec 0.001)
+            :name "liters" :short "L"
+            :aliases ["l" "liter" "liters" "litre" "litres"]}
+   :ml     {:dim {:length 3} :scale (->bigdec 0.000001)
+            :name "ml" :short "ml"
+            :aliases ["ml" "milliliter" "milliliters" "millilitre" "millilitres"]}
+   :cc     {:dim {:length 3} :scale (->bigdec 0.000001)
+            :name "cc" :short "cc"
+            :aliases ["cc" "cubic centimeter" "cubic centimeters"
+                      "cubic centimetre" "cubic centimetres"]}
+   :gal    {:dim {:length 3} :scale (->bigdec 0.003785411784)
+            :name "gallons" :short "gal"
+            :aliases ["gal" "gallon" "gallons"]}
+   :floz   {:dim {:length 3} :scale (->bigdec 0.0000295735295625)
+            :name "fl oz" :short "floz"
+            :aliases ["fl oz" "floz" "fluid ounce" "fluid ounces"]}
+   :cup    {:dim {:length 3} :scale (->bigdec 0.0002365882365)
+            :name "cups" :short "cup"
+            :aliases ["cup" "cups"]}
+   :pt     {:dim {:length 3} :scale (->bigdec 0.000473176473)
+            :name "pints" :short "pt"
+            :aliases ["pt" "pint" "pints"]}
+   :qt     {:dim {:length 3} :scale (->bigdec 0.000946352946)
+            :name "quarts" :short "qt"
+            :aliases ["qt" "quart" "quarts"]}
+   :tbsp   {:dim {:length 3} :scale (->bigdec 0.00001478676478125)
+            :name "tablespoons" :short "tbsp"
+            :aliases ["tbsp" "tablespoon" "tablespoons"]}
+   :tsp    {:dim {:length 3} :scale (->bigdec 0.00000492892159375)
+            :name "teaspoons" :short "tsp"
+            :aliases ["tsp" "teaspoon" "teaspoons"]}
 
-   ;; US liquid gallon.
-   :gal  {:dim {:length 3} :scale (->bigdec 0.003785411784)}
-   :floz {:dim {:length 3} :scale (->bigdec 0.0000295735295625)}
-   :cup  {:dim {:length 3} :scale (->bigdec 0.0002365882365)}
-   :pt   {:dim {:length 3} :scale (->bigdec 0.000473176473)}
-   :qt   {:dim {:length 3} :scale (->bigdec 0.000946352946)}
-   :tbsp {:dim {:length 3} :scale (->bigdec 0.00001478676478125)}
-   :tsp  {:dim {:length 3} :scale (->bigdec 0.00000492892159375)}
+   ;; ---- Area (length^2) ----
+   :acre   {:dim {:length 2} :scale (->bigdec 4046.8564224)
+            :name "acres" :short "acre"
+            :aliases ["acre" "acres"]}
+   :ha     {:dim {:length 2} :scale (->bigdec 10000)
+            :name "hectares" :short "ha"
+            :aliases ["ha" "hectare" "hectares"]}
 
-   ;; Area.
-   :acre {:dim {:length 2} :scale (->bigdec 4046.8564224)}
-   :ha   {:dim {:length 2} :scale (->bigdec 10000)}
-
-   ;; Data. Base is byte.
-   :bit  {:dim {:data 1} :scale (->bigdec 0.125)}
-
-   ;; Bytes (decimal / SI)
-   :B    {:dim {:data 1} :scale (->bigdec 1)}
-   :KB   {:dim {:data 1} :scale (->bigdec 1000)}
-   :MB   {:dim {:data 1} :scale (->bigdec 1000000)}
-   :GB   {:dim {:data 1} :scale (->bigdec 1000000000)}
-   :TB   {:dim {:data 1} :scale (->bigdec 1000000000000)}
-   :PB   {:dim {:data 1} :scale (->bigdec 1000000000000000)}
-   :EB   {:dim {:data 1} :scale (->bigdec 1000000000000000000)}
-
-   ;; Bytes (binary / IEC)
-   :KiB  {:dim {:data 1} :scale (->bigdec 1024)}
-   :MiB  {:dim {:data 1} :scale (->bigdec 1048576)}
-   :GiB  {:dim {:data 1} :scale (->bigdec 1073741824)}
-   :TiB  {:dim {:data 1} :scale (->bigdec 1099511627776)}
-   :PiB  {:dim {:data 1} :scale (->bigdec 1125899906842624)}
-   :EiB  {:dim {:data 1} :scale (->bigdec 1152921504606846976)}
-
+   ;; ---- Data ----
+   :bit    {:dim {:data 1} :scale (->bigdec 0.125)
+            :name "bits" :short "bit"
+            :aliases ["bit" "bits"]}
+   :B      {:dim {:data 1} :scale (->bigdec 1)
+            :name "bytes" :short "B" :auto-scale true
+            :aliases ["B" "byte" "bytes"]}
+   :KB     {:dim {:data 1} :scale (->bigdec 1000)
+            :name "KB" :short "KB" :auto-scale true
+            :aliases ["KB" "kb" "kilobyte" "kilobytes"]}
+   :MB     {:dim {:data 1} :scale (->bigdec 1000000)
+            :name "MB" :short "MB" :auto-scale true
+            :aliases ["MB" "mb" "megabyte" "megabytes"]}
+   :GB     {:dim {:data 1} :scale (->bigdec 1000000000)
+            :name "GB" :short "GB" :auto-scale true
+            :aliases ["GB" "gb" "gigabyte" "gigabytes"]}
+   :TB     {:dim {:data 1} :scale (->bigdec 1000000000000)
+            :name "TB" :short "TB" :auto-scale true
+            :aliases ["TB" "tb" "terabyte" "terabytes" "terrabyte" "terrabytes"]}
+   :PB     {:dim {:data 1} :scale (->bigdec 1000000000000000)
+            :name "PB" :short "PB" :auto-scale true
+            :aliases ["PB" "pb" "petabyte" "petabytes"]}
+   :EB     {:dim {:data 1} :scale (->bigdec 1000000000000000000)
+            :name "EB" :short "EB"
+            :aliases ["EB" "eb" "exabyte" "exabytes"]}
+   ;; Binary (IEC)
+   :KiB    {:dim {:data 1} :scale (->bigdec 1024)
+            :name "KiB" :short "KiB"
+            :aliases ["KiB" "kib" "kibibyte" "kibibytes"]}
+   :MiB    {:dim {:data 1} :scale (->bigdec 1048576)
+            :name "MiB" :short "MiB"
+            :aliases ["MiB" "mib" "mebibyte" "mebibytes"]}
+   :GiB    {:dim {:data 1} :scale (->bigdec 1073741824)
+            :name "GiB" :short "GiB"
+            :aliases ["GiB" "gib" "gibibyte" "gibibytes"]}
+   :TiB    {:dim {:data 1} :scale (->bigdec 1099511627776)
+            :name "TiB" :short "TiB"
+            :aliases ["TiB" "tib" "tebibyte" "tebibytes"]}
+   :PiB    {:dim {:data 1} :scale (->bigdec 1125899906842624)
+            :name "PiB" :short "PiB"
+            :aliases ["PiB" "pib" "pebibyte" "pebibytes"]}
+   :EiB    {:dim {:data 1} :scale (->bigdec 1152921504606846976)
+            :name "EiB" :short "EiB"
+            :aliases ["EiB" "eib" "exbibyte" "exbibytes"]}
    ;; Bits (decimal)
-   :Kb   {:dim {:data 1} :scale (->bigdec 125)}
-   :Mb   {:dim {:data 1} :scale (->bigdec 125000)}
-   :Gb   {:dim {:data 1} :scale (->bigdec 125000000)}
-   :Tb   {:dim {:data 1} :scale (->bigdec 125000000000)}
-   :Pb   {:dim {:data 1} :scale (->bigdec 125000000000000)}
-   :Eb   {:dim {:data 1} :scale (->bigdec 125000000000000000)}
+   :Kb     {:dim {:data 1} :scale (->bigdec 125)
+            :name "Kb" :short "Kb"
+            :aliases ["Kb" "kilobit" "kilobits"]}
+   :Mb     {:dim {:data 1} :scale (->bigdec 125000)
+            :name "Mb" :short "Mb"
+            :aliases ["Mb" "megabit" "megabits"]}
+   :Gb     {:dim {:data 1} :scale (->bigdec 125000000)
+            :name "Gb" :short "Gb"
+            :aliases ["Gb" "gigabit" "gigabits"]}
+   :Tb     {:dim {:data 1} :scale (->bigdec 125000000000)
+            :name "Tb" :short "Tb"
+            :aliases ["Tb" "terabit" "terabits" "terrabit" "terrabits"]}
+   :Pb     {:dim {:data 1} :scale (->bigdec 125000000000000)
+            :name "Pb" :short "Pb"
+            :aliases ["Pb" "petabit" "petabits"]}
+   :Eb     {:dim {:data 1} :scale (->bigdec 125000000000000000)
+            :name "Eb" :short "Eb"
+            :aliases ["Eb" "exabit" "exabits"]}
 
-   ;; Derived mechanical units.
-   :N    {:dim {:mass 1 :length 1 :time -2} :scale (->bigdec 1)}
-   :J    {:dim {:mass 1 :length 2 :time -2} :scale (->bigdec 1)}
-   :W    {:dim {:mass 1 :length 2 :time -3} :scale (->bigdec 1)}
-   :mW   {:dim {:mass 1 :length 2 :time -3} :scale (->bigdec 0.001)}
-   :kW   {:dim {:mass 1 :length 2 :time -3} :scale (->bigdec 1000)}
-   :MW   {:dim {:mass 1 :length 2 :time -3} :scale (->bigdec 1000000)}
-   :GW   {:dim {:mass 1 :length 2 :time -3} :scale (->bigdec 1000000000)}
-   :TW   {:dim {:mass 1 :length 2 :time -3} :scale (->bigdec 1000000000000)}
-   :Pa   {:dim {:mass 1 :length -1 :time -2} :scale (->bigdec 1)}
-   :psi  {:dim {:mass 1 :length -1 :time -2} :scale (->bigdec 6894.757293168)}
-   :bar  {:dim {:mass 1 :length -1 :time -2} :scale (->bigdec 100000)}
-   :atm  {:dim {:mass 1 :length -1 :time -2} :scale (->bigdec 101325)}
-   :mmHg {:dim {:mass 1 :length -1 :time -2} :scale (->bigdec 133.322387415)}
-   :torr {:dim {:mass 1 :length -1 :time -2} :scale (->bigdec 133.322368421)}
+   ;; ---- Force ----
+   :N      {:dim {:mass 1 :length 1 :time -2} :scale (->bigdec 1)
+            :name "newtons" :short "N"
+            :aliases ["n" "newton" "newtons"]}
 
-   ;; Energy.
-   :cal  {:dim {:mass 1 :length 2 :time -2} :scale (->bigdec 4.184)}
-   :kcal {:dim {:mass 1 :length 2 :time -2} :scale (->bigdec 4184)}
-   :kWh  {:dim {:mass 1 :length 2 :time -2} :scale (->bigdec 3600000)}
-   :BTU  {:dim {:mass 1 :length 2 :time -2} :scale (->bigdec 1055.06)}
-   :eV   {:dim {:mass 1 :length 2 :time -2} :scale (->bigdec 1.602176634E-19)}
+   ;; ---- Energy ----
+   :J      {:dim {:mass 1 :length 2 :time -2} :scale (->bigdec 1)
+            :name "joules" :short "J" :auto-scale true
+            :aliases ["j" "joule" "joules"]}
+   :cal    {:dim {:mass 1 :length 2 :time -2} :scale (->bigdec 4.184)
+            :name "cal" :short "cal" :auto-scale true
+            :aliases ["cal" "calorie" "calories"]}
+   :kcal   {:dim {:mass 1 :length 2 :time -2} :scale (->bigdec 4184)
+            :name "kcal" :short "kcal" :auto-scale true
+            :aliases ["kcal" "kilocalorie" "kilocalories"]}
+   :kWh    {:dim {:mass 1 :length 2 :time -2} :scale (->bigdec 3600000)
+            :name "kWh" :short "kWh" :auto-scale true
+            :aliases ["kwh" "kWh" "kilowatt-hour" "kilowatt-hours"]}
+   :BTU    {:dim {:mass 1 :length 2 :time -2} :scale (->bigdec 1055.06)
+            :name "BTU" :short "BTU" :auto-scale true
+            :aliases ["btu" "BTU" "btus"]}
+   :eV     {:dim {:mass 1 :length 2 :time -2} :scale (->bigdec 1.602176634E-19)
+            :name "eV" :short "eV" :auto-scale true
+            :aliases ["ev" "eV" "electronvolt" "electronvolts"]}
+   :Wh     {:dim {:mass 1 :length 2 :time -2} :scale (->bigdec 3600)
+            :name "Wh" :short "Wh"
+            :aliases ["wh" "Wh" "watt-hour" "watt-hours"]}
 
-   ;; Frequency. Base is Hz (1/s).
-   :Hz   {:dim {:time -1} :scale (->bigdec 1)}
-   :kHz  {:dim {:time -1} :scale (->bigdec 1000)}
-   :MHz  {:dim {:time -1} :scale (->bigdec 1000000)}
-   :GHz  {:dim {:time -1} :scale (->bigdec 1000000000)}
+   ;; ---- Power ----
+   :W      {:dim {:mass 1 :length 2 :time -3} :scale (->bigdec 1)
+            :name "watts" :short "W" :auto-scale true
+            :aliases ["w" "watt" "watts"]}
+   :mW     {:dim {:mass 1 :length 2 :time -3} :scale (->bigdec 0.001)
+            :name "mW" :short "mW" :auto-scale true
+            :aliases ["mw" "milliwatt" "milliwatts"]}
+   :kW     {:dim {:mass 1 :length 2 :time -3} :scale (->bigdec 1000)
+            :name "kW" :short "kW" :auto-scale true
+            :aliases ["kw" "kilowatt" "kilowatts"]}
+   :MW     {:dim {:mass 1 :length 2 :time -3} :scale (->bigdec 1000000)
+            :name "MW" :short "MW" :auto-scale true
+            :aliases ["MW" "megawatt" "megawatts"]}
+   :GW     {:dim {:mass 1 :length 2 :time -3} :scale (->bigdec 1000000000)
+            :name "GW" :short "GW" :auto-scale true
+            :aliases ["GW" "gigawatt" "gigawatts"]}
+   :TW     {:dim {:mass 1 :length 2 :time -3} :scale (->bigdec 1000000000000)
+            :name "TW" :short "TW" :auto-scale true
+            :aliases ["TW" "terawatt" "terawatts"]}
 
-   ;; Electrical.
-   :V    {:dim {:mass 1 :length 2 :time -3 :current -1} :scale (->bigdec 1)}
-   :A    {:dim {:current 1} :scale (->bigdec 1)}
-   :mA   {:dim {:current 1} :scale (->bigdec 0.001)}
-   :ohm  {:dim {:mass 1 :length 2 :time -3 :current -2} :scale (->bigdec 1)}
-   :F    {:dim {:current 2 :time 4 :mass -1 :length -2} :scale (->bigdec 1)}
-   :uF   {:dim {:current 2 :time 4 :mass -1 :length -2} :scale (->bigdec 0.000001)}
-   :nF   {:dim {:current 2 :time 4 :mass -1 :length -2} :scale (->bigdec 0.000000001)}
-   :pF   {:dim {:current 2 :time 4 :mass -1 :length -2} :scale (->bigdec 0.000000000001)}
-   :H    {:dim {:mass 1 :length 2 :time -2 :current -2} :scale (->bigdec 1)}
-   :Wh   {:dim {:mass 1 :length 2 :time -2} :scale (->bigdec 3600)}
+   ;; ---- Pressure ----
+   :Pa     {:dim {:mass 1 :length -1 :time -2} :scale (->bigdec 1)
+            :name "pascals" :short "Pa"
+            :aliases ["pa" "pascal" "pascals"]}
+   :psi    {:dim {:mass 1 :length -1 :time -2} :scale (->bigdec 6894.757293168)
+            :name "psi" :short "psi"
+            :aliases ["psi"]}
+   :bar    {:dim {:mass 1 :length -1 :time -2} :scale (->bigdec 100000)
+            :name "bar" :short "bar"
+            :aliases ["bar" "bars"]}
+   :atm    {:dim {:mass 1 :length -1 :time -2} :scale (->bigdec 101325)
+            :name "atm" :short "atm"
+            :aliases ["atm" "atmosphere" "atmospheres"]}
+   :mmHg   {:dim {:mass 1 :length -1 :time -2} :scale (->bigdec 133.322387415)
+            :name "mmHg" :short "mmHg"
+            :aliases ["mmhg" "mmHg"]}
+   :torr   {:dim {:mass 1 :length -1 :time -2} :scale (->bigdec 133.322368421)
+            :name "torr" :short "torr"
+            :aliases ["torr"]}
 
-   ;; Angle.
-   :rad  {:dim {:angle 1} :scale (->bigdec 1)}
-   :deg  {:dim {:angle 1} :scale (->bigdec 0.01745329251994330)}
+   ;; ---- Frequency ----
+   :Hz     {:dim {:time -1} :scale (->bigdec 1)
+            :name "Hz" :short "Hz"
+            :aliases ["hz" "Hz" "hertz"]}
+   :kHz    {:dim {:time -1} :scale (->bigdec 1000)
+            :name "kHz" :short "kHz"
+            :aliases ["khz" "kHz" "kilohertz"]}
+   :MHz    {:dim {:time -1} :scale (->bigdec 1000000)
+            :name "MHz" :short "MHz"
+            :aliases ["mhz" "MHz" "megahertz"]}
+   :GHz    {:dim {:time -1} :scale (->bigdec 1000000000)
+            :name "GHz" :short "GHz"
+            :aliases ["ghz" "GHz" "gigahertz"]}
 
-   ;; Speed.
-   :kn   {:dim {:length 1 :time -1} :scale (->bigdec 0.51444444444444)}})
+   ;; ---- Electrical ----
+   :V      {:dim {:mass 1 :length 2 :time -3 :current -1} :scale (->bigdec 1)
+            :name "volts" :short "V" :auto-scale true
+            :aliases ["v" "volt" "volts"]}
+   :A      {:dim {:current 1} :scale (->bigdec 1)
+            :name "amps" :short "A" :auto-scale true
+            :aliases ["amp" "amps" "ampere" "amperes"]}
+   :mA     {:dim {:current 1} :scale (->bigdec 0.001)
+            :name "mA" :short "mA" :auto-scale true
+            :aliases ["ma" "milliamp" "milliamps" "milliampere" "milliamperes"]}
+   :ohm    {:dim {:mass 1 :length 2 :time -3 :current -2} :scale (->bigdec 1)
+            :name "ohms" :short "Ω"
+            :aliases ["ohm" "ohms" "Ω"]}
+   :F      {:dim {:current 2 :time 4 :mass -1 :length -2} :scale (->bigdec 1)
+            :name "farads" :short "F"
+            :aliases ["farad" "farads"]}
+   :uF     {:dim {:current 2 :time 4 :mass -1 :length -2} :scale (->bigdec 0.000001)
+            :name "μF" :short "μF"
+            :aliases ["uf" "μF" "uF" "microfarad" "microfarads"]}
+   :nF     {:dim {:current 2 :time 4 :mass -1 :length -2} :scale (->bigdec 0.000000001)
+            :name "nF" :short "nF"
+            :aliases ["nf" "nF" "nanofarad" "nanofarads"]}
+   :pF     {:dim {:current 2 :time 4 :mass -1 :length -2} :scale (->bigdec 0.000000000001)
+            :name "pF" :short "pF"
+            :aliases ["pf" "pF" "picofarad" "picofarads"]}
+   :H      {:dim {:mass 1 :length 2 :time -2 :current -2} :scale (->bigdec 1)
+            :name "henries" :short "H"
+            :aliases ["henry" "henries" "henrys"]}
+
+   ;; ---- Angle ----
+   :rad    {:dim {:angle 1} :scale (->bigdec 1)
+            :name "radians" :short "rad"
+            :aliases ["rad" "radian" "radians"]}
+   :deg    {:dim {:angle 1} :scale (->bigdec 0.01745329251994330)
+            :name "degrees" :short "°"
+            :aliases ["deg" "degree" "degrees"]}
+
+   ;; ---- Speed ----
+   :kn     {:dim {:length 1 :time -1} :scale (->bigdec 0.51444444444444)
+            :name "knots" :short "kn"
+            :aliases ["knot" "knots" "kn" "kt"]}
+
+   ;; ---- Temperature (special: affine transforms, no dim/scale) ----
+   :degF   {:temperature true
+            :name "fahrenheit" :short "°F"
+            :aliases ["f" "fahrenheit"]}
+   :degC   {:temperature true
+            :name "celsius" :short "°C"
+            :aliases ["c" "celsius"]}
+   :K      {:temperature true
+            :name "kelvin" :short "K"
+            :aliases ["k" "kelvin"]}})
+
+;; ============================================================================
+;; Derived lookup tables (all computed from unit-defs)
+;; ============================================================================
+
+(def unit-aliases
+  "Map from English string to canonical unit keyword. Derived from :aliases."
+  (into {}
+        (for [[unit-key {:keys [aliases]}] unit-defs
+              alias aliases]
+          [alias unit-key])))
+
+(def canonical-units
+  "Map from keyword aliases to canonical unit keyword.
+   E.g. :mile -> :mi, :foot -> :ft. Derived from :aliases."
+  (into {}
+        (for [[unit-key {:keys [aliases]}] unit-defs
+              alias aliases
+              :let [kw (keyword alias)]
+              :when (not= kw unit-key)]
+          [kw unit-key])))
 
 (def temperature-units
-  #{:degF :degC :K})
+  (into #{} (for [[k v] unit-defs :when (:temperature v)] k)))
+
+(def dim-categories
+  "Map from dimension map to human-readable category label."
+  {{:length 1} "Length"
+   {:length 2} "Area"
+   {:length 3} "Volume"
+   {:mass 1} "Mass"
+   {:time 1} "Time"
+   {:data 1} "Data"
+   {:mass 1 :length 1 :time -2} "Force"
+   {:mass 1 :length 2 :time -2} "Energy"
+   {:mass 1 :length 2 :time -3} "Power"
+   {:mass 1 :length -1 :time -2} "Pressure"
+   {:mass 1 :length 2 :time -3 :current -1} "Electrical Potential"
+   {:current 1} "Electric Current"
+   {:mass 1 :length 2 :time -3 :current -2} "Resistance"
+   {:current 2 :time 4 :mass -1 :length -2} "Capacitance"
+   {:mass 1 :length 2 :time -2 :current -2} "Inductance"})
+
+(def ^:private auto-scale-units
+  "Ordered lists of [unit-key scale] for each dimension with auto-scale units."
+  (let [as-entries (for [[k v] unit-defs
+                         :when (and (:auto-scale v) (:dim v))]
+                     [k v])
+        by-dim (group-by (fn [[_ v]] (:dim v)) as-entries)]
+    (into {}
+          (for [[dim entries] by-dim]
+            [dim (->> entries
+                      (map (fn [[k v]] [k (:scale v)]))
+                      (sort-by (fn [[_ s]] #?(:clj (double s) :cljs s))))]))))
+
+(def ^:private unit-display-names
+  (into {} (for [[k v] unit-defs :when (:name v)] [k (:name v)])))
+
+(def ^:private unit-short-names
+  (into {} (for [[k v] unit-defs :when (:short v)] [k (:short v)])))
+
+;; ============================================================================
+;; Dimension and conversion functions
+;; ============================================================================
+
+(defn canonical-unit [u]
+  (get canonical-units u u))
 
 (defn pow-dec [x n]
   (cond
@@ -397,42 +665,6 @@
 ;; Auto-scaling: pick the best unit for a given dimension and SI value
 ;; ---------------------------------------------------------------------------
 
-(def ^:private auto-scale-units
-  "Ordered lists of [unit-key scale] for each base dimension, sorted ascending."
-  (let [pick (fn [dim ks]
-               (->> ks
-                    (map (fn [k] [k (get-in unit-defs [k :scale])]))
-                    (sort-by (fn [[_ s]] #?(:clj (double s) :cljs s)))))]
-    {{:time 1}   (pick {:time 1}   [:s :min :hr :day :week :yr])
-     {:length 1} (pick {:length 1} [:mm :cm :m :km :mi])
-     {:mass 1}   (pick {:mass 1}   [:g :kg :lb])
-     {:data 1}   (pick {:data 1}   [:B :KB :MB :GB :TB :PB])
-     {:current 1} (pick {:current 1} [:mA :A])
-     {:mass 1 :length 2 :time -3} (pick {:mass 1 :length 2 :time -3} [:mW :W :kW :MW :GW :TW])
-     {:mass 1 :length 2 :time -2} (pick {:mass 1 :length 2 :time -2} [:eV :J :cal :kcal :BTU :kWh])
-     {:mass 1 :length 2 :time -3 :current -1} (pick {:mass 1 :length 2 :time -3 :current -1} [:V])}))
-
-(def ^:private unit-display-names
-  {:s "seconds" :min "minutes" :hr "hours" :day "days" :week "weeks" :yr "years"
-   :mm "mm" :cm "cm" :m "meters" :km "km" :mi "miles"
-   :g "grams" :kg "kg" :lb "pounds"
-   :B "bytes" :KB "KB" :MB "MB" :GB "GB" :TB "TB" :PB "PB"
-   :mA "mA" :A "amps"
-   :mW "mW" :W "watts" :kW "kW" :MW "MW" :GW "GW" :TW "TW"
-   :eV "eV" :J "joules" :cal "cal" :kcal "kcal" :BTU "BTU" :kWh "kWh"
-   :V "volts"})
-
-(def ^:private unit-short-names
-  "Abbreviated unit names for compound unit labels (e.g. W/day, mi/hr)."
-  {:s "s" :min "min" :hr "hr" :day "day" :week "wk" :yr "yr"
-   :mm "mm" :cm "cm" :m "m" :km "km" :mi "mi"
-   :g "g" :kg "kg" :lb "lb"
-   :B "B" :KB "KB" :MB "MB" :GB "GB" :TB "TB" :PB "PB"
-   :mA "mA" :A "A"
-   :mW "mW" :W "W" :kW "kW" :MW "MW" :GW "GW" :TW "TW"
-   :eV "eV" :J "J" :cal "cal" :kcal "kcal" :BTU "BTU" :kWh "kWh"
-   :V "V"})
-
 (defn- pick-best-unit
   "From a sorted candidate list, pick the largest unit where |value/scale| >= 1."
   [candidates abs-val]
@@ -477,7 +709,7 @@
                             (get unit-short-names denom-key (name denom-key)))})]
     ;; Pick the candidate whose value is most naturally readable.
     ;; Prefer values in 1-999; penalize values < 1 or >= 1000.
-    ;; Tiebreaker: prefer shorter unit labels (W/day over kW/years).
+    ;; Tiebreaker: prefer shorter numeric representation.
     (when (seq candidates)
       (let [score (fn [{:keys [abs-conv unit-label]}]
                     (let [range-penalty
