@@ -29,8 +29,8 @@ web-build:
     just _nix "cd web && npm ci && npx shadow-cljs release app && bash cache-bust.sh"
 
 # Run the web app dev server with hot reload (http://localhost:8080)
-web-dev: web-build
-    just _nix "cd web && GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo dev) && sed \"s/main\.__HASH__\.js/main.js/g; s/__HASH__/dev/g; s/__GIT_SHA__/\$GIT_SHA/g\" public/index.html.template > public/index.html && sed 's/main\.__HASH__\.js/main.js/g; s/__HASH__/dev/g' public/sw.js.template > public/sw.js && npx shadow-cljs watch app"
+web-dev:
+    just _nix "cd web && npm ci && [ -f public/calc.html ] || { npx shadow-cljs release app && bash cache-bust.sh; } && GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo dev) && sed \"s/main\.__HASH__\.js/main.js/g; s/__HASH__/dev/g; s/__GIT_SHA__/\$GIT_SHA/g\" public/index.html.template > public/index.html && sed 's/main\.__HASH__\.js/main.js/g; s/__HASH__/dev/g' public/sw.js.template > public/sw.js && npx shadow-cljs watch app"
 
 # Remove build artifacts
 clean:
