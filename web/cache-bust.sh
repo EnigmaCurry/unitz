@@ -12,14 +12,17 @@ for f in js/main.*.js; do
 done
 mv js/main.js "js/main.${HASH}.js"
 
+# Get git SHA for build metadata
+GIT_SHA=$(git -C "$(dirname "$0")" rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
 # Generate index.html and sw.js from templates with the hash stamped in
-sed "s/__HASH__/${HASH}/g" index.html.template > index.html
+sed "s/__HASH__/${HASH}/g; s/__GIT_SHA__/${GIT_SHA}/g" index.html.template > index.html
 sed "s/__HASH__/${HASH}/g" sw.js.template > sw.js
 
 # Generate calc.html: a single self-contained file with JS inlined
-awk -v js_file="js/main.${HASH}.js" -v hash="${HASH}" '
-  # Replace __HASH__ placeholders (for any non-script uses)
-  { gsub(/__HASH__/, hash) }
+awk -v js_file="js/main.${HASH}.js" -v hash="${HASH}" -v git_sha="${GIT_SHA}" '
+  # Replace placeholders
+  { gsub(/__HASH__/, hash); gsub(/__GIT_SHA__/, git_sha) }
   # Inline the JS bundle
   /<script src="js\/main\./ {
     print "<script>"
@@ -28,6 +31,8 @@ awk -v js_file="js/main.${HASH}.js" -v hash="${HASH}" '
     print "</script>"
     next
   }
+  # Inject snapshot meta tag (detected by app to show snapshot intro)
+  /<meta charset/ { print; print "  <meta name=\"calc-snapshot\" content=\"" git_sha "\">"; next }
   # Strip PWA-related tags not useful for standalone file
   /rel="manifest"/ { next }
   /apple-touch-icon/ { next }
