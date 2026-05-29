@@ -14,6 +14,17 @@
    "fps" {:ft 1 :s -1}
    "ft/s" {:ft 1 :s -1}
 
+   ;; Area / volume shorthand
+   "sqft" {:ft 2}
+   "sqm"  {:m 2}
+   "sqyd" {:yd 2}
+   "sqmi" {:mi 2}
+   "sqkm" {:km 2}
+   "sqin" {:in 2}
+   "cuft" {:ft 3}
+   "cum"  {:m 3}
+   "cuyd" {:yd 3}
+
    ;; Bit rates (lowercase b = bits)
    "bps"  {:bit 1 :s -1}
    "Kbps" {:Kb 1 :s -1}

@@ -307,4 +307,17 @@
   (testing "foot cubed (suffix form)"
     (let [{:keys [result target]} (cli/process-request-text "1 foot cubed in meter cubed" nil)]
       (is (some? result))
-      (is (= "m^3" target)))))
+      (is (= "m^3" target))))
+
+  (testing "sqft shorthand"
+    (let [{:keys [result]} (cli/process-request-text "12 sqft" nil)]
+      (is (= "12 ft^2" result))))
+
+  (testing "sqft to sqm conversion"
+    (let [{:keys [result target]} (cli/process-request-text "100 sqft in sqm" nil)]
+      (is (some? result))
+      (is (= "m^2" target))))
+
+  (testing "cuft shorthand"
+    (let [{:keys [result]} (cli/process-request-text "1 cuft" nil)]
+      (is (= "1 ft^3" result)))))
