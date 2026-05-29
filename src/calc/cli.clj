@@ -141,8 +141,16 @@
    "\n"
    ["Usage:"
     "  calc <request>"
-    "  calc -n <request>       (numeric output only, requires explicit target unit)"
     "  calc --list [--kind <kind>]"
+    ""
+    "Options:"
+    "  -n, --numeric          Output bare number only (requires explicit target unit)"
+    "  -p, --precision N      Round to N decimal places"
+    "  -s, --sig-figs N       Round to N significant figures"
+    "  -v, --verbose          Verbose output"
+    "  -k, --kind <kind>      Filter --list by unit kind"
+    "      --list             List supported units"
+    "      --help             Show this help"
     ""
     "Examples:"
     "  calc 12 feet in yards"
@@ -203,11 +211,16 @@
           [kind tokens] (extract-flag tokens "-k" "--kind")
           verbose? (some #{"-v" "--verbose"} tokens)
           tokens (vec (remove #{"-v" "--verbose"} tokens))
+          help? (some #{"-h" "--help"} tokens)
+          tokens (vec (remove #{"-h" "--help"} tokens))
           numeric? (some #{"-n" "--numeric"} tokens)
           tokens (vec (remove #{"-n" "--numeric"} tokens))
           [fmt-opts tokens] (parse-format-opts tokens)
           input (str/trim (str/join " " tokens))]
       (cond
+        help?
+        (println (usage))
+
         list?
         (println (list-units kind))
 
