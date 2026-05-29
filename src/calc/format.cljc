@@ -68,7 +68,7 @@
 
 (defn format-number
   ([x] (format-number x nil))
-  ([x {:keys [round sig-figs style numeric]}]
+  ([x {:keys [round sig-figs style numeric original-expr]}]
    (if (= :fraction style)
      (format-as-fraction x)
      #?(:clj
@@ -90,10 +90,14 @@
             (ratio? x)
             (let [bd (BigDecimal. (double x))
                   approx (.toPlainString (.stripTrailingZeros
-                                          (.round bd (MathContext. 10 RoundingMode/HALF_UP))))]
+                                          (.round bd (MathContext. 10 RoundingMode/HALF_UP))))
+                  reduced (str x)]
               (if numeric
                 approx
-                (str x " = " approx)))
+                (if (and original-expr
+                         (not= (str/trim original-expr) reduced))
+                  (str (str/trim original-expr) " = " reduced " = " approx)
+                  (str reduced " = " approx))))
 
             :else
             (str x)))

@@ -82,7 +82,22 @@
     (let [{:keys [result error]} (cli/process-request-text "21349 /234234" {:numeric true})]
       (is (nil? error))
       (is (not (re-find #"=" result)))
-      (is (re-find #"^0\.\d+" result)))))
+      (is (re-find #"^0\.\d+" result))))
+
+  (testing "reduced fraction shows original = reduced = decimal"
+    (let [{:keys [result error]} (cli/process-request-text "2/10" nil)]
+      (is (nil? error))
+      (is (= "2/10 = 1/5 = 0.2" result))))
+
+  (testing "already-reduced fraction shows fraction = decimal"
+    (let [{:keys [result error]} (cli/process-request-text "1/5" nil)]
+      (is (nil? error))
+      (is (= "1/5 = 0.2" result))))
+
+  (testing "reduced fraction with spaces shows original = reduced = decimal"
+    (let [{:keys [result error]} (cli/process-request-text "4 / 8" nil)]
+      (is (nil? error))
+      (is (= "4 / 8 = 1/2 = 0.5" result)))))
 
 (deftest display-uses-canonical-units
   (testing "long unit names become short forms"
