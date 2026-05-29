@@ -18,21 +18,29 @@
           (let [parsed (parser/parse-request input)
                 effective-fmt (merge (:format parsed) fmt-opts)
                 result (ev/convert-request parsed)]
-            (if-not (:ok? result)
+            (cond
+              (not (:ok? result))
               {:error (fmt/format-error result)}
-              (if (= :percentage (:op parsed))
-                {:result (str (fmt/format-number (:value result) effective-fmt)
-                              (:unit-label result))}
-                (if (:unit-label result)
-                  {:from input
-                   :result (str (fmt/format-number (:value result) effective-fmt) " " (:unit-label result))}
-                  (let [[display-input] (parser/extract-format input)
-                        {:keys [from target]} (parser/split-display-parts display-input)]
-                    (if (some? from)
-                      {:from from
-                       :target target
-                       :result (fmt/format-number (:value result) effective-fmt)}
-                      {:result (fmt/format-number (:value result) effective-fmt)})))))))
+
+              (= :percentage (:op parsed))
+              {:result (str (fmt/format-number (:value result) effective-fmt)
+                            (:unit-label result))}
+
+              (= :root (:op parsed))
+              {:result (fmt/format-number (:value result) effective-fmt)}
+
+              (:unit-label result)
+              {:from input
+               :result (str (fmt/format-number (:value result) effective-fmt) " " (:unit-label result))}
+
+              :else
+              (let [[display-input] (parser/extract-format input)
+                    {:keys [from target]} (parser/split-display-parts display-input)]
+                (if (some? from)
+                  {:from from
+                   :target target
+                   :result (fmt/format-number (:value result) effective-fmt)}
+                  {:result (fmt/format-number (:value result) effective-fmt)})))))
         (catch :default e
           {:error (if-let [data (.-data e)]
                     (fmt/format-error (js->clj data :keywordize-keys true))
@@ -114,6 +122,12 @@
    "7 inches in feet as a fraction"
    "10 is what percent of 100?"
    "15% of 50"
+   "sqrt(144)"
+   "square root of 2"
+   "cube root of 27"
+   "4th root of 625"
+   "root(3, 125)"
+   "2 * sqrt(25)"
    "2 + 2"
    "3 * (4 + 5)"])
 
@@ -141,6 +155,66 @@
                   (js/setTimeout scroll-log-to-top 0)))}
    text])
 
+(def help-example-groups
+  [["Unit Conversion"
+    [["12 feet in yards" "4 yd"]
+     ["5 miles to km" "8.04672 km"]
+     ["100 fahrenheit to celsius" "37.7778 \u00b0C"]
+     ["how many inches are in 3 feet?" "36 in"]
+     ["3.5 kg to pounds" "7.71618 lb"]]]
+   ["Mixed Quantities"
+    [["5 feet 11 inches to cm" "180.34 cm"]
+     ["1 hour 30 minutes in seconds" "5400 s"]
+     ["6 lb 4 oz in grams" "2834.9523 g"]]]
+   ["Area & Volume"
+    [["10 square feet in square meters" "0.9290304 m\u00b2"]
+     ["2 cubic yards to gallons" "403.948 gal"]
+     ["100 sqft in sqm" "9.290304 m\u00b2"]]]
+   ["Compound Units"
+    [["60 mph in ft/s" "88 ft/s"]
+     ["100 MB / 10 Mbps in seconds" "80 s"]
+     ["100 GB / 900 Mbps" "14.81 min"]]]
+   ["Roots"
+    [["sqrt(144)" "12"]
+     ["square root of 2" "1.4142..."]
+     ["cube root of 27" "3"]
+     ["4th root of 625" "5"]
+     ["fifth root of 32" "2"]
+     ["root(3, 125)" "5"]
+     ["2 * sqrt(25)" "10"]]]
+   ["Percentages"
+    [["15% of 50" "7.5"]
+     ["10 is what percent of 100?" "10%"]
+     ["what is 25 percent of 200" "50"]]]
+   ["Math"
+    [["2 + 2" "4"]
+     ["3 * (4 + 5)" "27"]
+     ["2^10" "1024"]
+     ["sqrt(9) + sqrt(16)" "7"]]]
+   ["Formatting"
+    [["7 inches in feet as a fraction" "7/12 ft"]
+     ["square root of 2 rounded to 4 decimals" "1.4142"]
+     ["5 miles in km with 3 sig figs" "8.05 km"]]]])
+
+(defn- run-example [input]
+  (swap! state assoc :input input)
+  (let [ev (evaluate input (:fmt-opts @state))]
+    (swap! state assoc
+           :result (:result ev)
+           :error (:error ev)
+           :input "")
+    (swap! state update :history
+           (fn [h]
+             (into [{:input input
+                     :from (:from ev)
+                     :target (:target ev)
+                     :result (:result ev)
+                     :error (:error ev)}]
+                   h)))
+    (swap! state assoc :page :calc)
+    (save-history! (:history @state))
+    (js/setTimeout scroll-log-to-top 0)))
+
 (defn help-page []
   [:div.help-page
    [:div.help-header
@@ -153,34 +227,17 @@
     "It supports dimensional analysis across length, weight, volume, temperature, speed, time, data, and more. "
     "All conversions run 100% client-side in your browser \u2014 nothing is sent to a server. "
     "This app is a PWA (Progressive Web App) \u2014 you can install it to your device from your browser menu and use it offline."]
-   [:p.help-intro
-    "Type natural phrases like "
-    [:code "5 feet in meters"]
-    ", "
-    [:code "100 fahrenheit to celsius"]
-    ", or "
-    [:code "100 GB / 10 Mbps in minutes"]
-    ". Mixed quantities work too: "
-    [:code "5 feet 11 inches to cm"]
-    ". You can calculate percentages ("
-    [:code "15% of 50"]
-    ", "
-    [:code "10 is what percent of 100?"]
-    "), do basic math ("
-    [:code "3 * (4 + 5)"]
-    "), and control output formatting ("
-    [:code "7 inches in feet as a fraction"]
-    ", "
-    [:code "pi rounded to 5 decimals"]
-    "). Compound units work with "
-    [:code "/"]
-    " and "
-    [:code "*"]
-    " operators, e.g. "
-    [:code "60 mph in ft/s"]
-    " or "
-    [:code "1 ft*ft in sq yards"]
-    "."]
+   (for [[group-name entries] help-example-groups]
+     ^{:key group-name}
+     [:div.unit-group
+      [:h3 group-name]
+      [:div.unit-table {:style {:grid-template-columns "1fr"}}
+       (for [[input output] entries]
+         ^{:key input}
+         [:div.unit-row {:style {:cursor "pointer"}
+                         :on-click #(run-example input)}
+          [:code {:style {:flex "1"}} input]
+          [:span.unit-label {:style {:text-align "right"}} (str "\u2192 " output)]])]])
    [:div.unit-group
     [:h3 "Commands"]
     [:div.unit-table
@@ -201,12 +258,7 @@
          ^{:key sym}
          [:div.unit-row
           [:span.unit-sym (name sym)]
-          [:span.unit-label label]])]])
-   [:div.examples
-    [:h3 "Try some examples"]
-    [:div.chips
-     (for [ex examples]
-       ^{:key ex} [example-chip ex])]]])
+          [:span.unit-label label]])]])])
 
 (def clear-commands #{"clear" "/clear" "reset" "/reset"})
 

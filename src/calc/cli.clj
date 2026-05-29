@@ -160,30 +160,34 @@
     (let [parsed (parser/parse-request input)
           effective-fmt (merge (:format parsed) fmt-opts)
           result (ev/convert-request parsed)]
-      (if-not (:ok? result)
+      (cond
+        (not (:ok? result))
         {:error (format-error result)}
-        (if (= :percentage (:op parsed))
-          ;; Percentage result
-          (if (:unit-label result)
-            {:result (str (fmt/format-number (:value result) effective-fmt)
-                          (:unit-label result))}
-            {:result (fmt/format-number (:value result) effective-fmt)})
-        (if (= :root (:op parsed))
-          ;; Root result
-          {:result (fmt/format-number (:value result) effective-fmt)}
-          (if (:unit-label result)
-            {:result (str (fmt/format-number (:value result) effective-fmt)
-                          " " (:unit-label result))
-             :from (format-quantity-label (:quantity parsed))
-             :target nil}
-            (if (= :auto (:to parsed))
-              ;; Auto-scale couldn't find a better unit — display original quantity as-is
-              {:result (format-quantity-label (:quantity parsed))
-               :from nil
-               :target nil}
-              {:result (fmt/format-number (:value result) effective-fmt)
-               :from (format-quantity-label (:quantity parsed))
-               :target (format-unit-label (:to parsed))}))))))))
+
+        (= :percentage (:op parsed))
+        (if (:unit-label result)
+          {:result (str (fmt/format-number (:value result) effective-fmt)
+                        (:unit-label result))}
+          {:result (fmt/format-number (:value result) effective-fmt)})
+
+        (= :root (:op parsed))
+        {:result (fmt/format-number (:value result) effective-fmt)}
+
+        (:unit-label result)
+        {:result (str (fmt/format-number (:value result) effective-fmt)
+                      " " (:unit-label result))
+         :from (format-quantity-label (:quantity parsed))
+         :target nil}
+
+        (= :auto (:to parsed))
+        {:result (format-quantity-label (:quantity parsed))
+         :from nil
+         :target nil}
+
+        :else
+        {:result (fmt/format-number (:value result) effective-fmt)
+         :from (format-quantity-label (:quantity parsed))
+         :target (format-unit-label (:to parsed))}))))
 
 (defn usage []
   (str/join
@@ -280,7 +284,22 @@
     "  /reset            Clear screen and history"
     "  /quit, /exit      Exit the REPL"
     ""
-    "Type any calculation expression at the prompt."]))
+    "Examples:"
+    "  12 feet in yards              → 4 yd"
+    "  2 cubic yards to gallons      → 403.948... gal"
+    "  100 celsius to fahrenheit     → 212 °F"
+    "  5 feet 11 inches in cm        → 180.34 cm"
+    "  15% of 200                    → 30"
+    "  sqrt(144)                     → 12"
+    "  square root of 144            → 12"
+    "  cube root of 27               → 3"
+    "  4th root of 625               → 5"
+    "  sqrt(2)                       → 1.4142..."
+    "  cbrt 64                       → 4"
+    "  fifth root of 32              → 2"
+    "  root(3, 125)                  → 5"
+    "  2 * sqrt(25)                  → 10"
+    "  100 MB / 100 Mbps in seconds  → 8 s"]))
 
 (defn- parse-slash-command
   "Parse a slash command from trimmed input. Returns [cmd arg] or nil if not a slash command."
