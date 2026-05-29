@@ -326,8 +326,8 @@
                         (println "Error:" (.getMessage e))))
                     fmt-opts))))]
         (cond
-          (= ::exit next-opts) nil
-          (= ::restart next-opts) (repl)
+          (= ::exit next-opts) (.close terminal)
+          (= ::restart next-opts) (do (.close terminal) (repl))
           :else (recur next-opts))))))
 
 (defn process-stdin
