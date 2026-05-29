@@ -1,4 +1,7 @@
 {:paths ["src" "test"]
  :tasks
  {test {:doc "Run tests"
-        :task (load-file "test/test_runner.clj")}}}
+        :task (load-file "test/test_runner.clj")}
+  calc {:doc "Run a conversion (e.g., bb calc 12 feet in yards)"
+        :requires ([calc.cli :as cli])
+        :task (apply cli/-main *command-line-args*)}}}

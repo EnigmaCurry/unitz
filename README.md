@@ -11,42 +11,36 @@ Runs in three places:
  * **Web** at [calc.rymcg.tech](https://calc.rymcg.tech) (100% client-side)
  * **Library** in your Clojure/ClojureScript applications
 
-## Setup
+## Install
 
-The project uses a Nix flake for dependencies (Babashka, Clojure, JDK, just):
+### With Nix (recommended)
+
+Run without installing:
 
 ```bash
-# Enter the dev shell
-just dev
+nix run github:EnigmaCurry/calc -- 12 feet in yards
+```
 
-# Or directly with nix
-nix develop
+Install to your profile:
+
+```bash
+nix profile install github:EnigmaCurry/calc
+calc 12 feet in yards
+```
+
+### From source
+
+```bash
+git clone https://github.com/EnigmaCurry/calc.git
+cd calc
+just dev              # Enter nix dev shell (provides babashka, clojure, just)
+just calc 12 feet in yards
 ```
 
 ## CLI usage
 
-### With Babashka (fast startup)
-
-```bash
-bb -e "$(cat <<'EOF'
-(require '[calc.cli :as cli])
-(cli/-main "12 feet in yards")
-EOF
-)"
-# 12 feet = 4 yards
-```
-
-Or use the just recipe:
-
 ```bash
 just calc 12 feet in yards
-# 12 feet = 4 yards
-```
-
-### With JVM Clojure
-
-```bash
-clojure -M:cli 12 feet in yards
 # 12 feet = 4 yards
 ```
 
@@ -74,7 +68,7 @@ $ just calc 7 inches in feet as a fraction
 $ just calc 2 + 2
 4
 
-$ just calc 3 * "(4 + 5)"
+$ just calc 3 '*' '(4 + 5)'
 27
 ```
 
@@ -228,12 +222,21 @@ Add the dependency, then:
 | `calc.cli` | CLI argument handling and output |
 | `calc.web` | Reagent SPA (ClojureScript) |
 
+## Web app
+
+A live instance is at [calc.rymcg.tech](https://calc.rymcg.tech).
+
+```bash
+just web-build        # Build static site (output: web/public/)
+just web-dev          # Dev server with hot reload (http://localhost:8080)
+```
+
 ## Development
 
 ```bash
 just dev              # Enter nix dev shell
 just test             # Run all tests (Babashka + JVM)
-bb test               # Fast tests (Babashka only)
-clojure -M:test       # JVM tests only
-just web-build        # Build the ClojureScript web app
+just calc --list      # List all supported units
+just web-build        # Build the static web app
+just web-dev          # Web dev server with hot reload
 ```

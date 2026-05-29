@@ -1,5 +1,5 @@
 {
-  description = "calc development environment";
+  description = "calc - unit conversion and calculator";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -16,6 +16,18 @@
             });
     in
     {
+      packages = forAllSystems ({ pkgs }:
+        let
+          calc = pkgs.writeShellScriptBin "calc" ''
+            exec ${pkgs.babashka}/bin/bb --classpath ${self}/src \
+              -e "(require '[calc.cli :as cli]) (apply cli/-main *command-line-args*)" \
+              -- "$@"
+          '';
+        in {
+          default = calc;
+          calc = calc;
+        });
+
       devShells = forAllSystems ({ pkgs }:
         {
           default = pkgs.mkShell {
