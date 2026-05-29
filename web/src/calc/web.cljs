@@ -223,21 +223,31 @@
      "\u2190 Back"]
     [:h2 "Help"]]
    (let [snapshot-meta (.querySelector js/document "meta[name='calc-snapshot']")
-         snapshot-sha (when snapshot-meta (.getAttribute snapshot-meta "content"))]
+         snapshot-sha (when snapshot-meta (.getAttribute snapshot-meta "content"))
+         git-sha (some-> (.querySelector js/document "meta[name='calc-git-sha']")
+                         (.getAttribute "content"))
+         dev? (= git-sha "dev")
+         mode (cond snapshot-sha :snapshot dev? :dev :else :pwa)]
      [:div
       [:p.help-intro
        [:strong "calc"] " is a unit conversion calculator that understands natural English. "
        "It supports dimensional analysis across length, weight, volume, temperature, speed, time, data, and more. "
-       (if snapshot-sha
+       (case mode
+         :snapshot
          [:<>
           "This is a static snapshot build (" snapshot-sha "). Visit "
           [:a {:href "https://calc.rymcg.tech" :target "_blank" :rel "noopener"} "calc.rymcg.tech"]
           " to download the latest release."]
+
+         :dev
+         "This is a development build."
+
+         :pwa
          [:<>
           "This page is a static HTML/JS PWA (Progressive Web App) - all calculations are performed client-side in your browser. "
           "You can install this page from your browser menu to your desktop / home screen and run it offline as an app. "
           "You can also download a single self-contained file you can run from anywhere."])]
-      (when-not snapshot-sha
+      (when (= mode :pwa)
         [:div {:style {:text-align "center" :margin-bottom "1.5rem"}}
          [:a.download-btn {:href "/calc.html" :download "calc.html"} "Download"]])])
    (for [[group-name entries] help-example-groups]
@@ -457,7 +467,7 @@
           "Source Code"]
          (when-let [sha (some-> (.querySelector js/document "meta[name='calc-git-sha']")
                                 (.getAttribute "content"))]
-           (when-not (= sha "__GIT_SHA__")
+           (when-not (or (= sha "__GIT_SHA__") (= sha "dev"))
              (let [url (str "https://github.com/EnigmaCurry/calc/commit/" sha)]
                [:a.sha-link {:href url :target "_blank" :rel "noopener"
                               :on-click #(swap! state assoc :menu-open false)}
