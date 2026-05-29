@@ -56,7 +56,9 @@
      (cond
        (instance? BigDecimal x) x
        (integer? x) (BigDecimal/valueOf (long x))
-       (ratio? x)   (BigDecimal/valueOf (long (numerator x)))
+       (ratio? x)   (.divide (BigDecimal/valueOf (long (numerator x)))
+                             (BigDecimal/valueOf (long (denominator x)))
+                             math-context)
        :else         (BigDecimal. (str x)))
      :cljs x))
 
@@ -451,7 +453,10 @@
    {:length 3} "Volume"
    {:mass 1} "Mass"
    {:time 1} "Time"
+   {:time -1} "Frequency"
    {:data 1} "Data"
+   {:angle 1} "Angle"
+   {:length 1 :time -1} "Speed"
    {:mass 1 :length 1 :time -2} "Force"
    {:mass 1 :length 2 :time -2} "Energy"
    {:mass 1 :length 2 :time -3} "Power"
@@ -479,6 +484,83 @@
 
 (def ^:private unit-short-names
   (into {} (for [[k v] unit-defs :when (:short v)] [k (:short v)])))
+
+;; ============================================================================
+;; Unit groups for display (help pages, unit listings)
+;; ============================================================================
+;;
+;; Each group specifies unit keys; display names are derived from :aliases
+;; in unit-defs (second alias = singular full name). This is the single
+;; source of truth for how units are grouped in CLI and web help output.
+
+(defn- unit-display-label
+  "Derive a singular display name from a unit's :aliases vector.
+   Uses the second alias (index 1) which is conventionally the singular form."
+  [unit-key]
+  (let [{:keys [aliases]} (get unit-defs unit-key)]
+    (or (get aliases 1) (first aliases) (name unit-key))))
+
+(def ^:private unit-group-spec
+  [{:name "Length"
+    :description "Distance and length measurements"
+    :keys [:m :km :cm :mm :um :nm :ft :yd :in :mi :nmi :fathom :ly :au :pc]}
+   {:name "Mass"
+    :description "Weight and mass measurements"
+    :keys [:kg :g :mg :ug :lb :oz :tonne :ton :stone :ct]}
+   {:name "Time"
+    :description "Duration and time intervals"
+    :keys [:s :min :hr :day :week :yr :century :millennium]}
+   {:name "Temperature"
+    :description "Temperature scales"
+    :keys [:degC :degF :K]}
+   {:name "Volume"
+    :description "Capacity and volume (dimensional: length\u00B3)"
+    :keys [:l :ml :cc :gal :floz :cup :pt :qt :tbsp :tsp]}
+   {:name "Area"
+    :description "Surface area (dimensional: length\u00B2)"
+    :keys [:acre :ha]}
+   {:name "Data (Bytes \u2014 Decimal/SI)"
+    :description "Digital storage using powers of 1000"
+    :keys [:bit :B :KB :MB :GB :TB :PB :EB]}
+   {:name "Data (Bytes \u2014 Binary/IEC)"
+    :description "Digital storage using powers of 1024"
+    :keys [:KiB :MiB :GiB :TiB :PiB :EiB]}
+   {:name "Data (Bits \u2014 Decimal)"
+    :description "Data transfer rates using powers of 1000"
+    :keys [:Kb :Mb :Gb :Tb :Pb :Eb]}
+   {:name "Force"
+    :description "Push or pull on an object (dimensional: mass \u00D7 length \u00D7 time\u207B\u00B2)"
+    :keys [:N]}
+   {:name "Energy"
+    :description "Capacity to do work (dimensional: mass \u00D7 length\u00B2 \u00D7 time\u207B\u00B2)"
+    :keys [:J :cal :kcal :kWh :BTU :eV :Wh]}
+   {:name "Power"
+    :description "Rate of energy transfer (dimensional: mass \u00D7 length\u00B2 \u00D7 time\u207B\u00B3)"
+    :keys [:W :mW :kW :MW :GW :TW]}
+   {:name "Pressure"
+    :description "Force per unit area (dimensional: mass \u00D7 length\u207B\u00B9 \u00D7 time\u207B\u00B2)"
+    :keys [:Pa :psi :bar :atm :mmHg :torr]}
+   {:name "Frequency"
+    :description "Cycles per unit time (dimensional: time\u207B\u00B9)"
+    :keys [:Hz :kHz :MHz :GHz]}
+   {:name "Electrical"
+    :description "Voltage, current, resistance, capacitance, and inductance"
+    :keys [:V :A :mA :ohm :F :uF :nF :pF :H]}
+   {:name "Angle"
+    :description "Angular measurements"
+    :keys [:rad :deg]}
+   {:name "Speed"
+    :description "Rate of movement (dimensional: length \u00D7 time\u207B\u00B9)"
+    :keys [:kn]}])
+
+(def unit-groups
+  "Units organized by kind for help pages. Each entry has :name, :description,
+   and :units (vector of [keyword display-name] pairs derived from unit-defs)."
+  (mapv (fn [{:keys [keys] :as group}]
+          (-> group
+              (dissoc :keys)
+              (assoc :units (mapv (fn [k] [k (unit-display-label k)]) keys))))
+        unit-group-spec))
 
 ;; ============================================================================
 ;; Dimension and conversion functions

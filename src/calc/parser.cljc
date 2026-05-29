@@ -644,6 +644,24 @@
            (catch :default _
              [quantity-str to-str]))))))
 
+(defn split-display-parts
+  "Extract {:from ... :target ...} from the input, where :from is the
+   quantity side and :target is the unit-only side. Used for display formatting."
+  [input]
+  (or
+   ;; how many X are in Y → from=Y, target=X
+   (when-let [[_ to from] (re-matches #"(?i)^how many (.+) are in (.+)$" input)]
+     {:from (str/trim from) :target (str/trim to)})
+   ;; how many X is Y → from=Y, target=X
+   (when-let [[_ to from] (re-matches #"(?i)^how many (.+) is (.+)$" input)]
+     {:from (str/trim from) :target (str/trim to)})
+   ;; Y is how many X → from=Y, target=X
+   (when-let [[_ from to] (re-matches #"(?i)^(.+) is how many (.+)$" input)]
+     {:from (str/trim from) :target (str/trim to)})
+   ;; Generic "X in/to Y" (with optional leading "how much is"/"what is"/"convert")
+   (when-let [[_ lhs _ rhs] (re-matches #"(?i)^(?:(?:how much is|what is|convert)\s+)?(.+?)\s+(in|to)\s+(.+?)$" input)]
+     {:from (str/trim lhs) :target (str/trim rhs)})))
+
 (defn parse-request [phrase]
   (let [original phrase]
     (try

@@ -1,5 +1,6 @@
 (ns calc.cli
   (:require [calc.core :as u]
+            [calc.format :as fmt]
             [clojure.string :as str]
             [calc.parser :as parser])
   (:gen-class))
@@ -113,58 +114,8 @@
                                   [(format-temp-section aliases)
                                    (format-compound-section)])))))))
 
-(defn format-number
-  ([x] (format-number x nil))
-  ([x {:keys [round sig-figs] :as opts}]
-   (cond
-     round
-     (let [bd (if (instance? java.math.BigDecimal x)
-                x
-                (BigDecimal. (double x)))]
-       (.toPlainString (.setScale bd (int round) java.math.RoundingMode/HALF_UP)))
-
-     sig-figs
-     (let [bd (if (instance? java.math.BigDecimal x)
-                x
-                (BigDecimal. (double x)))]
-       (.toPlainString (.stripTrailingZeros
-                        (.round bd (java.math.MathContext. (int sig-figs) java.math.RoundingMode/HALF_UP)))))
-
-     :else
-     (cond
-       (instance? java.math.BigDecimal x)
-       (.toPlainString (.stripTrailingZeros ^java.math.BigDecimal x))
-
-       :else
-       (str x)))))
-
-(defn format-error [{:keys [error unit phrase] :as err}]
-  (case error
-    :unknown-unit (str "Error: Unknown unit \"" unit "\"")
-    :unparseable (str "Error: Could not parse \"" phrase "\"")
-    :ambiguous-quantities (str "Error: Both sides of the conversion have quantities")
-    :incompatible-dimensions (str "Error: Incompatible dimensions")
-    :unsupported-operation (str "Error: Unsupported operation")
-    :invalid-request (str "Error: Invalid request")
-    (str "Error: " (pr-str err))))
-
-(defn split-input-parts
-  "Extract [from target] from the input, where from is the quantity side
-   and target is the unit-only side."
-  [input]
-  (or
-   ;; how many X are in Y → from=Y, target=X
-   (when-let [[_ to from] (re-matches #"(?i)^how many (.+) are in (.+)$" input)]
-     [(str/trim from) (str/trim to)])
-   ;; how many X is Y → from=Y, target=X
-   (when-let [[_ to from] (re-matches #"(?i)^how many (.+) is (.+)$" input)]
-     [(str/trim from) (str/trim to)])
-   ;; Y is how many X → from=Y, target=X (but parser may swap)
-   (when-let [[_ from to] (re-matches #"(?i)^(.+) is how many (.+)$" input)]
-     [(str/trim from) (str/trim to)])
-   ;; Generic "X in/to Y"
-   (when-let [[_ lhs _ rhs] (re-matches #"(?i)^(?:(?:how much is|what is|convert)\s+)?(.+?)\s+(in|to)\s+(.+?)$" input)]
-     [(str/trim lhs) (str/trim rhs)])))
+(defn format-error [err]
+  (str "Error: " (fmt/format-error err)))
 
 (defn process-request-text [input fmt-opts]
   (let [parsed (parser/parse-request input)
@@ -177,7 +128,7 @@
 
       ;; Auto-scaled result (no target unit specified)
       (and (map? result) (contains? result :unit-label))
-      {:result (str (format-number (:value result) effective-fmt)
+      {:result (str (fmt/format-number (:value result) effective-fmt)
                     (when (:unit-label result)
                       (str " " (:unit-label result))))
        :from input
@@ -185,8 +136,8 @@
 
       :else
       (let [[display-input _] (parser/extract-format input)
-            [from target] (split-input-parts display-input)]
-        {:result (format-number result effective-fmt)
+            {:keys [from target]} (parser/split-display-parts display-input)]
+        {:result (fmt/format-number result effective-fmt)
          :from from
          :target target}))))
 

@@ -2,61 +2,9 @@
   (:require [reagent.core :as r]
             [reagent.dom.client :as rdom]
             [calc.core :as core]
+            [calc.format :as fmt]
             [calc.parser :as parser]
             [clojure.string :as str]))
-
-(defn format-number
-  ([x] (format-number x nil))
-  ([x {:keys [round sig-figs]}]
-   (cond
-     round
-     (.toFixed (js/Number x) round)
-
-     sig-figs
-     (let [s (.toPrecision (js/Number x) sig-figs)]
-       (if (str/includes? s ".")
-         (-> s (str/replace #"0+$" "") (str/replace #"\.$" ""))
-         s))
-
-     (js/Number.isInteger x)
-     (str (int x))
-
-     :else
-     (let [s (.toPrecision (js/Number x) 10)]
-       (if (str/includes? s ".")
-         (-> s
-             (str/replace #"0+$" "")
-             (str/replace #"\.$" ""))
-         s)))))
-
-(defn format-error [{:keys [error unit phrase]}]
-  (case error
-    :unknown-unit (str "Unknown unit: \"" unit "\"")
-    :unparseable (str "Could not parse: \"" phrase "\"")
-    :ambiguous-quantities "Both sides of the conversion have quantities"
-    :incompatible-dimensions "Incompatible dimensions"
-    :unsupported-operation "Unsupported operation"
-    :invalid-request "Invalid request"
-    (str "Error: " (pr-str {:error error}))))
-
-(defn- split-input [input]
-  "Extract the quantity (from) and target unit parts from the input string."
-  (let [patterns [#"(?i)^how many (.+) are in (.+)$"
-                  #"(?i)^how many (.+) is (.+)$"
-                  #"(?i)^(.+) is how many (.+)$"
-                  #"(?i)^how much is (.+) (?:in|to) (.+)$"
-                  #"(?i)^what is (.+) (?:in|to) (.+)$"
-                  #"(?i)^convert (.+) (?:in|to) (.+)$"]]
-    (or (some (fn [pat]
-                (when-let [[_ a b] (re-matches pat input)]
-                  ;; For "how many X are in Y" patterns, quantity is b, target is a
-                  (if (re-find #"(?i)^how many .+ (?:are in|is) " input)
-                    {:from b :target a}
-                    {:from a :target b})))
-              patterns)
-        ;; Generic "X in/to Y"
-        (when-let [[_ from _ to] (re-matches #"(?i)^(.+) (in|to) (.+)$" input)]
-          {:from from :target to}))))
 
 (defn evaluate [input]
   (let [input (str/trim input)]
@@ -64,30 +12,31 @@
       (try
         ;; First try as pure math expression
         (if-let [math-result (parser/parse-math input)]
-          {:result (format-number math-result)}
+          {:result (fmt/format-number math-result)}
           ;; Then try as unit conversion
           (let [parsed (parser/parse-request input)
                 fmt (:format parsed)
                 result (core/convert-request parsed)
-                {:keys [from target]} (split-input input)]
+                [display-input] (parser/extract-format input)
+                {:keys [from target]} (parser/split-display-parts display-input)]
             (cond
               (core/error? result)
-              {:error (format-error result)}
+              {:error (fmt/format-error result)}
 
               (:unit-label result)
               {:from input
-               :result (str (format-number (:value result) fmt) " " (:unit-label result))}
+               :result (str (fmt/format-number (:value result) fmt) " " (:unit-label result))}
 
               (some? from)
               {:from from
                :target target
-               :result (format-number result fmt)}
+               :result (fmt/format-number result fmt)}
 
               :else
-              {:result (format-number result fmt)})))
+              {:result (fmt/format-number result fmt)})))
         (catch :default e
           {:error (if-let [data (.-data e)]
-                    (format-error (js->clj data :keywordize-keys true))
+                    (fmt/format-error (js->clj data :keywordize-keys true))
                     (.-message e))})))))
 
 
@@ -143,74 +92,7 @@
    "2 + 2"
    "3 * (4 + 5)"])
 
-(def unit-groups
-  "Units organized by kind for the help page."
-  [{:name "Length"
-    :description "Distance and length measurements"
-    :units [[:m "meter"] [:km "kilometer"] [:cm "centimeter"] [:mm "millimeter"]
-            [:um "micrometer"] [:nm "nanometer"] [:ft "foot"] [:yd "yard"]
-            [:in "inch"] [:mi "mile"] [:nmi "nautical mile"] [:fathom "fathom"]
-            [:ly "light-year"] [:au "astronomical unit"] [:pc "parsec"]]}
-   {:name "Mass"
-    :description "Weight and mass measurements"
-    :units [[:kg "kilogram"] [:g "gram"] [:mg "milligram"] [:ug "microgram"]
-            [:lb "pound"] [:oz "ounce"] [:tonne "metric ton"] [:ton "short ton"]
-            [:stone "stone"] [:ct "carat"]]}
-   {:name "Time"
-    :description "Duration and time intervals"
-    :units [[:s "second"] [:min "minute"] [:hr "hour"] [:day "day"]
-            [:week "week"] [:yr "year"] [:century "century"] [:millennium "millennium"]]}
-   {:name "Temperature"
-    :description "Temperature scales"
-    :units [[:degC "celsius"] [:degF "fahrenheit"] [:K "kelvin"]]}
-   {:name "Volume"
-    :description "Capacity and volume (dimensional: length\u00B3)"
-    :units [[:l "liter"] [:ml "milliliter"] [:cc "cubic centimeter"]
-            [:gal "gallon"] [:floz "fluid ounce"] [:cup "cup"] [:pt "pint"]
-            [:qt "quart"] [:tbsp "tablespoon"] [:tsp "teaspoon"]]}
-   {:name "Area"
-    :description "Surface area (dimensional: length\u00B2)"
-    :units [[:acre "acre"] [:ha "hectare"]]}
-   {:name "Data (Bytes \u2014 Decimal/SI)"
-    :description "Digital storage using powers of 1000"
-    :units [[:bit "bit"] [:B "byte"] [:KB "kilobyte"] [:MB "megabyte"]
-            [:GB "gigabyte"] [:TB "terabyte"] [:PB "petabyte"] [:EB "exabyte"]]}
-   {:name "Data (Bytes \u2014 Binary/IEC)"
-    :description "Digital storage using powers of 1024"
-    :units [[:KiB "kibibyte"] [:MiB "mebibyte"] [:GiB "gibibyte"]
-            [:TiB "tebibyte"] [:PiB "pebibyte"] [:EiB "exbibyte"]]}
-   {:name "Data (Bits \u2014 Decimal)"
-    :description "Data transfer rates using powers of 1000"
-    :units [[:Kb "kilobit"] [:Mb "megabit"] [:Gb "gigabit"]
-            [:Tb "terabit"] [:Pb "petabit"] [:Eb "exabit"]]}
-   {:name "Force"
-    :description "Push or pull on an object (dimensional: mass \u00D7 length \u00D7 time\u207B\u00B2)"
-    :units [[:N "newton"]]}
-   {:name "Energy"
-    :description "Capacity to do work (dimensional: mass \u00D7 length\u00B2 \u00D7 time\u207B\u00B2)"
-    :units [[:J "joule"] [:cal "calorie"] [:kcal "kilocalorie"]
-            [:kWh "kilowatt-hour"] [:BTU "BTU"] [:eV "electronvolt"] [:Wh "watt-hour"]]}
-   {:name "Power"
-    :description "Rate of energy transfer (dimensional: mass \u00D7 length\u00B2 \u00D7 time\u207B\u00B3)"
-    :units [[:W "watt"] [:kW "kilowatt"]]}
-   {:name "Pressure"
-    :description "Force per unit area (dimensional: mass \u00D7 length\u207B\u00B9 \u00D7 time\u207B\u00B2)"
-    :units [[:Pa "pascal"] [:psi "psi"] [:bar "bar"] [:atm "atmosphere"]
-            [:mmHg "mmHg"] [:torr "torr"]]}
-   {:name "Frequency"
-    :description "Cycles per unit time (dimensional: time\u207B\u00B9)"
-    :units [[:Hz "hertz"] [:kHz "kilohertz"] [:MHz "megahertz"] [:GHz "gigahertz"]]}
-   {:name "Electrical"
-    :description "Voltage, current, resistance, capacitance, and inductance"
-    :units [[:V "volt"] [:A "ampere"] [:mA "milliampere"] [:ohm "ohm"]
-            [:F "farad"] [:uF "microfarad"] [:nF "nanofarad"] [:pF "picofarad"]
-            [:H "henry"]]}
-   {:name "Angle"
-    :description "Angular measurements"
-    :units [[:rad "radian"] [:deg "degree"]]}
-   {:name "Speed"
-    :description "Rate of movement (dimensional: length \u00D7 time\u207B\u00B9) \u2014 use compound units like mi/hr, km/hr, ft/s, m/s"
-    :units [[:kn "knot"]]}])
+(def unit-groups core/unit-groups)
 
 (defn help-page []
   [:div.help-page

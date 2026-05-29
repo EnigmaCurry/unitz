@@ -3,7 +3,7 @@
  :aliases
  {:test
   {:extra-paths ["test"]
-   :main-opts ["-e" "(require '[clojure.test :as t] '[calc.core-test] '[calc.conversion-test] '[calc.parser-test] '[calc.request-test] '[calc.units-test]) (let [{:keys [fail error]} (t/run-tests 'calc.core-test 'calc.conversion-test 'calc.parser-test 'calc.request-test 'calc.units-test)] (System/exit (if (pos? (+ fail error)) 1 0)))"]}
+   :main-opts ["-e" "(require '[clojure.test :as t] '[calc.core-test] '[calc.conversion-test] '[calc.parser-test] '[calc.request-test] '[calc.units-test] '[calc.registry-validation-test] '[calc.invariant-test]) (let [{:keys [fail error]} (t/run-tests 'calc.core-test 'calc.conversion-test 'calc.parser-test 'calc.request-test 'calc.units-test 'calc.registry-validation-test 'calc.invariant-test)] (System/exit (if (pos? (+ fail error)) 1 0)))"]}
 
   :cli
   {:main-opts ["-m" "calc.cli"]}}}
