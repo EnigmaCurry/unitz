@@ -141,11 +141,13 @@
    "\n"
    ["Usage:"
     "  calc <request>"
+    "  calc -n <request>       (numeric output only, requires explicit target unit)"
     "  calc --list [--kind <kind>]"
     ""
     "Examples:"
     "  calc 12 feet in yards"
     "  calc 2 cubic yards to gallons"
+    "  calc -n 100GB / 900Mbps in days"
     "  calc --list"
     "  calc --list --kind length"]))
 
@@ -201,6 +203,8 @@
           [kind tokens] (extract-flag tokens "-k" "--kind")
           verbose? (some #{"-v" "--verbose"} tokens)
           tokens (vec (remove #{"-v" "--verbose"} tokens))
+          numeric? (some #{"-n" "--numeric"} tokens)
+          tokens (vec (remove #{"-n" "--numeric"} tokens))
           [fmt-opts tokens] (parse-format-opts tokens)
           input (str/trim (str/join " " tokens))]
       (cond
@@ -217,15 +221,29 @@
           (System/exit 1))
 
         :else
-        (let [{:keys [error result from target]} (process-request-text input fmt-opts)]
-          (if error
-            (do
-              (binding [*out* *err*]
-                (println error))
-              (System/exit 1))
-            (if (and from target)
-              (println (str from " = " result " " target))
-              (println result))))))
+        (let [parsed (parser/parse-request input)]
+          (when (and numeric? (= :auto (:to parsed)))
+            (binding [*out* *err*]
+              (println "Error: --numeric requires an explicit target unit (e.g., \"in days\")"))
+            (System/exit 1))
+          (if numeric?
+            (let [effective-fmt (merge (:format parsed) fmt-opts)
+                  result (ev/convert-request parsed)]
+              (if-not (:ok? result)
+                (do
+                  (binding [*out* *err*]
+                    (println (format-error result)))
+                  (System/exit 1))
+                (println (fmt/format-number (:value result) effective-fmt))))
+            (let [{:keys [error result from target]} (process-request-text input fmt-opts)]
+              (if error
+                (do
+                  (binding [*out* *err*]
+                    (println error))
+                  (System/exit 1))
+                (if (and from target)
+                  (println (str from " = " result " " target))
+                  (println result))))))))
     (catch Exception e
       (binding [*out* *err*]
         (println "Error:" (.getMessage e)))
