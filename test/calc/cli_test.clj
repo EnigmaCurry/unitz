@@ -71,3 +71,24 @@
     (let [{:keys [result error]} (cli/process-request-text "1 / 3" {:round 2})]
       (is (nil? error))
       (is (= "0.33" result)))))
+
+(deftest display-normalizes-spacing
+  (testing "slash with trailing space"
+    (let [{:keys [from error]} (cli/process-request-text "2 meters/ second in kph" nil)]
+      (is (nil? error))
+      (is (= "2 meters/second" from))))
+
+  (testing "slash with surrounding spaces"
+    (let [{:keys [from error]} (cli/process-request-text "2 meters / second in kph" nil)]
+      (is (nil? error))
+      (is (= "2 meters/second" from))))
+
+  (testing "slash with excessive spaces"
+    (let [{:keys [from error]} (cli/process-request-text "2 meters/   second in kph" nil)]
+      (is (nil? error))
+      (is (= "2 meters/second" from))))
+
+  (testing "already compact slash is unchanged"
+    (let [{:keys [from error]} (cli/process-request-text "2 meters/second in kph" nil)]
+      (is (nil? error))
+      (is (= "2 meters/second" from)))))

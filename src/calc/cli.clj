@@ -135,7 +135,7 @@
            :from input
            :target nil}
           (let [[display-input _] (parser/extract-format input)
-                {:keys [from target]} (parser/split-display-parts display-input)]
+                {:keys [from target]} (parser/split-display-parts (parser/clean-phrase display-input))]
             {:result (fmt/format-number (:value result) effective-fmt)
              :from from
              :target target}))))))
