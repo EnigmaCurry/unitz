@@ -154,6 +154,15 @@
     " and "
     [:code "*"]
     " operators."]
+   [:div.unit-group
+    [:h3 "Commands"]
+    [:div.unit-table
+     [:div.unit-row [:span.unit-sym "/help"] [:span.unit-label "Show this help page"]]
+     [:div.unit-row [:span.unit-sym "/p N"] [:span.unit-label "Set precision to N decimal places"]]
+     [:div.unit-row [:span.unit-sym "/p"] [:span.unit-label "Clear precision setting"]]
+     [:div.unit-row [:span.unit-sym "/s N"] [:span.unit-label "Set significant figures to N"]]
+     [:div.unit-row [:span.unit-sym "/s"] [:span.unit-label "Clear sig-figs setting"]]
+     [:div.unit-row [:span.unit-sym "clear"] [:span.unit-label "Clear all history"]]]]
    (for [{group-name :name :keys [description units]} unit-groups]
      ^{:key group-name}
      [:div.unit-group
