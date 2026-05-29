@@ -225,8 +225,8 @@
    [:p.help-intro
     [:strong "calc"] " is a unit conversion calculator that understands natural English. "
     "It supports dimensional analysis across length, weight, volume, temperature, speed, time, data, and more. "
-    "All conversions run 100% client-side in your browser \u2014 nothing is sent to a server. "
-    "This app is a PWA (Progressive Web App) \u2014 you can install it to your device from your browser menu and use it offline."]
+    "This page is a static HTML/JS PWA (Progressive Web App) - all calculations are performed client-side in your browser. "
+    "You can install this page from your browser menu to your desktop / home screen and run it offline as an app."]
    (for [[group-name entries] help-example-groups]
      ^{:key group-name}
      [:div.unit-group
