@@ -137,7 +137,12 @@
          ^{:key sym}
          [:div.unit-row
           [:span.unit-sym (name sym)]
-          [:span.unit-label label]])]])])
+          [:span.unit-label label]])]])
+   [:div.examples
+    [:h3 "Try some examples"]
+    [:div.chips
+     (for [ex examples]
+       ^{:key ex} [example-chip ex])]]])
 
 (defn scroll-log-to-top []
   (when-let [el @log-ref]
