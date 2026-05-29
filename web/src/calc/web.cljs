@@ -379,7 +379,10 @@
                              (swap! state assoc :input input)
                              (when-let [el (.querySelector js/document ".input-wrapper input")]
                                (.focus el)
-                               (js/setTimeout #(set! (.-selectionStart el) (count input)) 0))))}
+                               (js/requestAnimationFrame
+                                (fn []
+                                  (let [len (count input)]
+                                    (.setSelectionRange el len len)))))))}
               [:span.log-input (or from input)]
               (cond
                 error
