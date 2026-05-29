@@ -308,7 +308,12 @@
                         :on-key-down on-keydown}
                  (empty? history) (assoc :placeholder "e.g. 100GB / 900Mbps"))]
        [:button {:class (str "clear-input" (when (str/blank? input) " empty"))
-                 :on-click #(swap! state assoc :input "" :hist-index -1)} "\u00d7"]]
+                 :on-mouse-down (fn [e]
+                                  (.preventDefault e)
+                                  (swap! state assoc :input "" :hist-index -1))
+                 :on-touch-start (fn [e]
+                                   (.preventDefault e)
+                                   (swap! state assoc :input "" :hist-index -1))} "\u00d7"]]
       [:button.menu-btn {:on-click #(swap! state update :menu-open not)}
        [:span.hamburger]
        [:span.hamburger]
