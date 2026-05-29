@@ -47,6 +47,8 @@
       (str/replace #"(\d)([A-Za-z])" "$1 $2")
       ;; Collapse whitespace around / between unit words: "meters / second" → "meters/second"
       (str/replace #"([A-Za-z])\s*/\s*([A-Za-z])" "$1/$2")
+      ;; Collapse whitespace around / between digits: "21349 /234234" → "21349/234234"
+      (str/replace #"(\d)\s*/\s*(\d)" "$1/$2")
       (str/replace #"\s+" " ")
       str/trim))
 

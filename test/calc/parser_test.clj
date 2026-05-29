@@ -2,6 +2,20 @@
   (:require [clojure.test :refer [deftest testing is are]]
             [calc.parser :as parser]))
 
+(deftest clean-phrase-normalizes-whitespace
+  (testing "collapses spaces around slash between words"
+    (is (= "2 meters/second" (parser/clean-phrase "2 meters / second")))
+    (is (= "2 meters/second" (parser/clean-phrase "2 meters/   second")))
+    (is (= "2 meters/second" (parser/clean-phrase "2 meters/ second"))))
+
+  (testing "collapses spaces around slash between digits"
+    (is (= "21349/234234" (parser/clean-phrase "21349 /234234")))
+    (is (= "21349/234234" (parser/clean-phrase "21349 / 234234")))
+    (is (= "21349/234234" (parser/clean-phrase "21349/234234"))))
+
+  (testing "does not collapse slash between unit and number"
+    (is (= "100 MB / 100 Mbps" (parser/clean-phrase "100 MB / 100 Mbps")))))
+
 (deftest parses-simple-scalar-conversions
   (testing "basic '<number> <unit> in/to <unit>' phrases"
     (are [phrase expected] (= expected (parser/parse-request phrase))
