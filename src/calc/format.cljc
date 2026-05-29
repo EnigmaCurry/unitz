@@ -87,6 +87,11 @@
             (instance? BigDecimal x)
             (.toPlainString (.stripTrailingZeros ^BigDecimal x))
 
+            (ratio? x)
+            (let [bd (BigDecimal. (double x))]
+              (.toPlainString (.stripTrailingZeros
+                               (.round bd (MathContext. 10 RoundingMode/HALF_UP)))))
+
             :else
             (str x)))
 
