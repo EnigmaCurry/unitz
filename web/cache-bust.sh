@@ -28,8 +28,12 @@ awk -v js_file="js/main.${HASH}.js" -v hash="${HASH}" '
     print "</script>"
     next
   }
-  # Skip service worker registration block (not useful for standalone file)
+  # Skip lines not useful for standalone file
   /serviceWorker/ { next }
+  /rel="manifest"/ { next }
+  /apple-touch-icon/ { next }
+  /apple-mobile-web-app/ { next }
+  /name="theme-color"/ { next }
   { print }
 ' index.html.template > calc.html
 echo "Cache-busted with hash: ${HASH}"

@@ -28,6 +28,14 @@ nix profile add github:EnigmaCurry/calc
 calc 12 feet in yards
 ```
 
+### Standalone HTML file
+
+Download [calc.html](https://calc.rymcg.tech/calc.html) — a single
+self-contained file with all HTML, CSS, and JavaScript inlined. No
+server required; open it directly in any browser, save it to your
+desktop, or put it on a USB stick. A download link is also available
+from the Help page of the [web app](https://calc.rymcg.tech).
+
 ### From source
 
 ```bash
