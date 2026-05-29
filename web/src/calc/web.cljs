@@ -226,7 +226,9 @@
     [:strong "calc"] " is a unit conversion calculator that understands natural English. "
     "It supports dimensional analysis across length, weight, volume, temperature, speed, time, data, and more. "
     "This page is a static HTML/JS PWA (Progressive Web App) - all calculations are performed client-side in your browser. "
-    "You can install this page from your browser menu to your desktop / home screen and run it offline as an app."]
+    "You can install this page from your browser menu to your desktop / home screen and run it offline as an app. "
+    "You can also " [:a {:href "/calc.html" :download "calc.html"} "download calc.html"]
+    " \u2014 a single self-contained file you can run from anywhere."]
    (for [[group-name entries] help-example-groups]
      ^{:key group-name}
      [:div.unit-group
