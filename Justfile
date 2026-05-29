@@ -22,11 +22,11 @@ test:
 
 # Build the static ClojureScript web app (output: web/public/)
 web-build:
-    cd web && npm ci && npx shadow-cljs release app
+    nix develop --command bash -c "cd web && npm ci && npx shadow-cljs release app"
 
 # Run the web app dev server with hot reload (http://localhost:8080)
 web-dev:
-    cd web && npm ci && npx shadow-cljs watch app
+    nix develop --command bash -c "cd web && npm ci && npx shadow-cljs watch app"
 
 # Run a conversion (e.g., just calc 5 miles to km)
 calc *ARGS:
