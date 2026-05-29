@@ -14,7 +14,12 @@
    {:mass 1 :length 1 :time -2} "Force"
    {:mass 1 :length 2 :time -2} "Energy"
    {:mass 1 :length 2 :time -3} "Power"
-   {:mass 1 :length -1 :time -2} "Pressure"})
+   {:mass 1 :length -1 :time -2} "Pressure"
+   {:mass 1 :length 2 :time -3 :current -1} "Electrical Potential"
+   {:current 1} "Electric Current"
+   {:mass 1 :length 2 :time -3 :current -2} "Resistance"
+   {:current 2 :time 4 :mass -1 :length -2} "Capacitance"
+   {:mass 1 :length 2 :time -2 :current -2} "Inductance"})
 
 (defn reverse-aliases
   "Build a map from canonical unit keyword to sorted list of alias strings."
@@ -89,7 +94,12 @@
                     {:mass 1 :length 1 :time -2}
                     {:mass 1 :length 2 :time -2}
                     {:mass 1 :length 2 :time -3}
-                    {:mass 1 :length -1 :time -2}]
+                    {:mass 1 :length -1 :time -2}
+                    {:mass 1 :length 2 :time -3 :current -1}
+                    {:current 1}
+                    {:mass 1 :length 2 :time -3 :current -2}
+                    {:current 2 :time 4 :mass -1 :length -2}
+                    {:mass 1 :length 2 :time -2 :current -2}]
          kind-lower (some-> kind str/lower-case)]
      (if kind-lower
        ;; Filtered to a single kind
