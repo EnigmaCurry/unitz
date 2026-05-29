@@ -674,9 +674,9 @@
 
 (defn split-request [s]
   (cond
-    ;; how many inches are in 3 feet
-    (re-matches #"(?i)^how many .+ are in .+$" s)
-    (let [[_ to quantity] (re-matches #"(?i)^how many (.+) are in (.+)$" s)]
+    ;; how many inches [are] in 3 feet
+    (re-matches #"(?i)^how many .+(?:\s+are)? in .+$" s)
+    (let [[_ to quantity] (re-matches #"(?i)^how many (.+?)(?:\s+are)? in (.+)$" s)]
       [quantity to])
 
     ;; how many yards is 12 feet
@@ -757,8 +757,8 @@
    quantity side and :target is the unit-only side. Used for display formatting."
   [input]
   (or
-   ;; how many X are in Y → from=Y, target=X
-   (when-let [[_ to from] (re-matches #"(?i)^how many (.+) are in (.+)$" input)]
+   ;; how many X [are] in Y → from=Y, target=X
+   (when-let [[_ to from] (re-matches #"(?i)^how many (.+?)(?:\s+are)? in (.+)$" input)]
      {:from (str/trim from) :target (str/trim to)})
    ;; how many X is Y → from=Y, target=X
    (when-let [[_ to from] (re-matches #"(?i)^how many (.+) is (.+)$" input)]
