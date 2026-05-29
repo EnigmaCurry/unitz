@@ -200,3 +200,35 @@
     (let [{:keys [result from target]} (cli/process-request-text "12 * 4 days in seconds" nil)]
       (is (= "4147200" result))
       (is (= "seconds" target)))))
+
+(deftest scalar-math-with-compound-units
+  (testing "12 * 4 miles/hour = 48 mi/hr"
+    (let [{:keys [result]} (cli/process-request-text "12 * 4 miles/hour" nil)]
+      (is (= "48 mi/hr" result))))
+  (testing "3 * 5 km/hr"
+    (let [{:keys [result]} (cli/process-request-text "3 * 5 km/hr" nil)]
+      (is (= "250 m/min" result))))
+  (testing "2 + 3 feet/second"
+    (let [{:keys [result]} (cli/process-request-text "2 + 3 feet/second" nil)]
+      (is (= "91.44 m/min" result))))
+  (testing "scalar math with compound unit and explicit target"
+    (let [{:keys [result target]} (cli/process-request-text "12 * 4 miles/hour in km/hr" nil)]
+      (is (= "77.248512" result))
+      (is (= "km/hr" target)))))
+
+(deftest standalone-compound-unit-quantity
+  (testing "standalone compound unit without conversion"
+    (let [result (ev/convert-request
+                  {:op :convert
+                   :quantity {:value 60N :unit {:mi 1 :hr -1}}
+                   :to :auto})]
+      (is (:ok? result))
+      (is (some? (:unit-label result)))))
+  (testing "standalone simple unit still works"
+    (let [result (ev/convert-request
+                  {:op :convert
+                   :quantity {:value 12N :unit :ft}
+                   :to :auto})]
+      (is (:ok? result))
+      (is (= 12N (:value result)))
+      (is (= "feet" (:unit-label result))))))

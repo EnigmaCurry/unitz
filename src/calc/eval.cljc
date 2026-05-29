@@ -242,8 +242,13 @@
 
      (and (map? quantity) (= to :auto))
      (let [unit-key (:unit quantity)]
-       {:value (u/normalize-number (:value quantity))
-        :unit-label (get u/unit-display-names unit-key (name unit-key))})
+       (if (keyword? unit-key)
+         {:value (u/normalize-number (:value quantity))
+          :unit-label (get u/unit-display-names unit-key (name unit-key))}
+         ;; Compound unit (exponent map) — convert value to SI and auto-select
+         (let [spec (u/unit-spec unit-key)
+               si-value (* (coerce-to-decimal (:value quantity)) (:scale spec))]
+           (auto-select-unit (:dim spec) si-value))))
 
      (vector? quantity)
      (convert-mixed quantity to)
