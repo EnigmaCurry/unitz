@@ -34,4 +34,11 @@ web-dev:
 
 # Run a conversion (e.g., just calc 5 miles to km)
 calc *ARGS:
-    @just _nix "bb calc {{ARGS}}"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ARGS='{{ARGS}}'
+    if command -v nix &>/dev/null; then
+        nix develop --command bb calc $ARGS
+    else
+        bb calc $ARGS
+    fi
