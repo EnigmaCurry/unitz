@@ -15,11 +15,11 @@
           neg (into {} (filter (fn [[_ v]] (neg? v))) unit)]
       (str (str/join "\u00b7" (for [[k v] pos]
                                 (let [label (get u/unit-short-names k (name k))]
-                                  (if (= v 1) label (str label v)))))
+                                  (if (= v 1) label (str label "^" v)))))
            (when (seq neg)
              (str "/" (str/join "\u00b7" (for [[k v] neg]
                                           (let [label (get u/unit-short-names k (name k))]
-                                            (if (= v -1) label (str label (- v))))))))))))
+                                            (if (= v -1) label (str label "^" (- v))))))))))))
 
 ;; ============================================================================
 ;; Scalar conversion

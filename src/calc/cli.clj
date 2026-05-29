@@ -132,12 +132,12 @@
           neg (into {} (filter (fn [[_ v]] (neg? v))) unit)]
       (str (str/join "·" (for [[k v] pos]
                            (let [label (get u/unit-short-names k (name k))]
-                             (if (= v 1) label (str label v)))))
+                             (if (= v 1) label (str label "^" v)))))
            (when (seq neg)
              (str "/" (str/join "·" (for [[k v] neg]
                                      (let [label (get u/unit-short-names k (name k))
                                            exp (- v)]
-                                       (if (= exp 1) label (str label exp)))))))))
+                                       (if (= exp 1) label (str label "^" exp)))))))))
 
     :else (str unit)))
 

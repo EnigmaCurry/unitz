@@ -267,7 +267,7 @@
   (testing "ft*ft parsed as square feet and converts to sq yards"
     (let [{:keys [result target]} (cli/process-request-text "1 ft*ft in sq yd" nil)]
       (is (some? result))
-      (is (= "yd2" target))))
+      (is (= "yd^2" target))))
 
   (testing "60 mph in ft/s"
     (let [{:keys [result target]} (cli/process-request-text "60 mph in ft/s" nil)]
@@ -277,34 +277,34 @@
   (testing "m*m parsed as square meters"
     (let [{:keys [result target]} (cli/process-request-text "9 m*m in sq ft" nil)]
       (is (some? result))
-      (is (= "ft2" target))))
+      (is (= "ft^2" target))))
 
   (testing "sq ft as alias for square feet"
     (let [{:keys [result target]} (cli/process-request-text "1 sq ft in sq m" nil)]
       (is (some? result))
-      (is (= "m2" target))))
+      (is (= "m^2" target))))
 
   (testing "squared yard (prefix form)"
     (let [{:keys [result target]} (cli/process-request-text "1 ft*ft in squared yard" nil)]
       (is (some? result))
-      (is (= "yd2" target))))
+      (is (= "yd^2" target))))
 
   (testing "yard square (suffix form)"
     (let [{:keys [result target]} (cli/process-request-text "1 ft*ft in yard square" nil)]
       (is (some? result))
-      (is (= "yd2" target))))
+      (is (= "yd^2" target))))
 
   (testing "yard squared (suffix form)"
     (let [{:keys [result target]} (cli/process-request-text "1 ft*ft in yard squared" nil)]
       (is (some? result))
-      (is (= "yd2" target))))
+      (is (= "yd^2" target))))
 
   (testing "cu ft as alias for cubic feet"
     (let [{:keys [result target]} (cli/process-request-text "1 cu ft in cu m" nil)]
       (is (some? result))
-      (is (= "m3" target))))
+      (is (= "m^3" target))))
 
   (testing "foot cubed (suffix form)"
     (let [{:keys [result target]} (cli/process-request-text "1 foot cubed in meter cubed" nil)]
       (is (some? result))
-      (is (= "m3" target)))))
+      (is (= "m^3" target)))))
