@@ -708,6 +708,12 @@
          (when-let [[y _] (parse-percentage-number y-str)]
            {:op :percentage :type :what-percent :value x :total y})))
 
+     ;; "what is X percent of Y"
+     (when-let [[_ x-str y-str] (re-matches #"(?i)^what\s+is\s+(.+?)\s+percent\s+of\s+(.+)$" s)]
+       (when-let [[x _] (parse-percentage-number x-str)]
+         (when-let [[y _] (parse-percentage-number y-str)]
+           {:op :percentage :type :percent-of :percent x :value y})))
+
      ;; "X percent of Y"
      (when-let [[_ x-str y-str] (re-matches #"(?i)^(.+?)\s+percent\s+of\s+(.+)$" s)]
        (when-let [[x _] (parse-percentage-number x-str)]

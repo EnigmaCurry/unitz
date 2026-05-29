@@ -128,21 +128,25 @@
     (let [{:keys [result]} (cli/process-request-text "1 is what percent of 3" nil)]
       (is (str/starts-with? result "33.3333"))))
 
-  (testing "percent of: 15 percent of 50 = 7.5"
+  (testing "percent of: 15 percent of 50 = 7.5%"
     (let [{:keys [result]} (cli/process-request-text "15 percent of 50" nil)]
-      (is (= "7.5" result))))
+      (is (= "7.5%" result))))
 
-  (testing "percent of: 50 percent of 200 = 100"
+  (testing "percent of: 50 percent of 200 = 100%"
     (let [{:keys [result]} (cli/process-request-text "50 percent of 200" nil)]
-      (is (= "100" result))))
+      (is (= "100%" result))))
 
-  (testing "percent sign syntax: 15% of 50 = 7.5"
+  (testing "percent sign syntax: 15% of 50 = 7.5%"
     (let [{:keys [result]} (cli/process-request-text "15% of 50" nil)]
-      (is (= "7.5" result))))
+      (is (= "7.5%" result))))
 
   (testing "reversed form: what percent of 100 is 25 = 25%"
     (let [{:keys [result]} (cli/process-request-text "what percent of 100 is 25" nil)]
-      (is (= "25%" result)))))
+      (is (= "25%" result))))
+
+  (testing "what is X percent of Y form"
+    (let [{:keys [result]} (cli/process-request-text "what is 10 percent of 100" nil)]
+      (is (= "10%" result)))))
 
 (deftest rejects-incompatible-dimensions
   (testing "length cannot convert to mass"

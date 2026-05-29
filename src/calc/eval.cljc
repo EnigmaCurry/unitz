@@ -234,7 +234,7 @@
     :percent-of
     (let [result (u/normalize-number
                   (u/safe-div (* (u/->bigdec percent) (u/->bigdec value)) (u/->bigdec 100)))]
-      {:value result})))
+      {:value result :unit-label "%"})))
 
 (defn convert-request [{:keys [op quantity to] :as request}]
   (wrap-result
