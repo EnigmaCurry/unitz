@@ -109,6 +109,27 @@
 
 (def unit-groups units/unit-groups)
 
+(defn example-chip [text]
+  [:button.example
+   {:on-click (fn []
+                (swap! state assoc :input text)
+                (let [ev (evaluate text (:fmt-opts @state))]
+                  (swap! state assoc
+                         :result (:result ev)
+                         :error (:error ev)
+                         :input "")
+                  (swap! state update :history
+                         (fn [h]
+                           (into [{:input text
+                                   :from (:from ev)
+                                   :target (:target ev)
+                                   :result (:result ev)
+                                   :error (:error ev)}]
+                                 h)))
+                  (save-history! (:history @state))
+                  (js/setTimeout scroll-log-to-top 0)))}
+   text])
+
 (defn help-page []
   [:div.help-page
    [:div.help-header
@@ -268,27 +289,6 @@
           (swap! state assoc :input "" :hist-index -1))
 
       nil)))
-
-(defn example-chip [text]
-  [:button.example
-   {:on-click (fn []
-                (swap! state assoc :input text)
-                (let [ev (evaluate text (:fmt-opts @state))]
-                  (swap! state assoc
-                         :result (:result ev)
-                         :error (:error ev)
-                         :input "")
-                  (swap! state update :history
-                         (fn [h]
-                           (into [{:input text
-                                   :from (:from ev)
-                                   :target (:target ev)
-                                   :result (:result ev)
-                                   :error (:error ev)}]
-                                 h)))
-                  (save-history! (:history @state))
-                  (js/setTimeout scroll-log-to-top 0)))}
-   text])
 
 (defn app []
   (let [{:keys [input history menu-open theme fmt-opts]} @state
