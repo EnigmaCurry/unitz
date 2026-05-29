@@ -497,9 +497,12 @@
     (or (when-let [{:keys [segments ops]} (split-on-qty-ops tokens)]
           (let [parsed (mapv parse-qty-segment segments)]
             (when (and (every? some? parsed)
-                       ;; First operand must have a unit — otherwise it is
-                       ;; plain scalar math (e.g. "3 * 4 feet", "100 / 4 feet")
-                       (not= {} (:unit (first parsed))))
+                       ;; First operand must have a unit when multiplying —
+                       ;; otherwise it is plain scalar math (e.g. "3 * 4 feet").
+                       ;; Division with a bare scalar numerator is allowed
+                       ;; (e.g. "4.5 / 77 days/meter").
+                       (or (not= {} (:unit (first parsed)))
+                           (some #{:/} ops)))
               {:qty-expr true :terms parsed :ops ops})))
         ;; Existing: simple or mixed quantities
         (loop [i 0
