@@ -45,6 +45,8 @@
       (str/replace #"~\s*" "~ ")
       ;; 12ft -> 12 ft, 100kg -> 100 kg
       (str/replace #"(\d)([A-Za-z])" "$1 $2")
+      ;; Collapse whitespace around / between unit words: "meters / second" → "meters/second"
+      (str/replace #"([A-Za-z])\s*/\s*([A-Za-z])" "$1/$2")
       (str/replace #"\s+" " ")
       str/trim))
 
