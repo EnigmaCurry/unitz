@@ -557,6 +557,10 @@
       (empty? tokens)
       (throw (ex-info "Missing unit" {:error :missing-unit}))
 
+      ;; "time" is shorthand for "hours, minutes, and seconds"
+      (= ["time"] lower-tokens)
+      [{:hr 1} {:min 1} {:s 1}]
+
       ;; Mixed output target: "feet and inches", "hours, minutes, and seconds"
       ;; Commas are stripped by clean-phrase, so "hours, minutes, and seconds"
       ;; becomes "hours minutes and seconds". We split on "and" first, then
