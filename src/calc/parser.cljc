@@ -640,9 +640,9 @@
       :else (recur (inc i)))))
 
 (defn- split-on-qty-ops
-  "Split tokens on * or / that appear between quantity groups.
+  "Split tokens on *, /, +, or - that appear between quantity groups.
    A token is a quantity operator when it is followed by something that
-   starts a number.  Returns {:segments [[tok ...] ...] :ops [:* or :/ ...]}
+   starts a number.  Returns {:segments [[tok ...] ...] :ops [:* :/ :+ or :- ...]}
    or nil when no quantity-level operators are found."
   [tokens]
   (loop [i 0, current [], segments [], ops []]
@@ -651,12 +651,16 @@
       (when (seq ops)
         {:segments (conj segments current) :ops ops})
 
-      (and (#{"*" "/"} (nth tokens i))
+      (and (#{"*" "/" "+" "-"} (nth tokens i))
            (seq current)
            (< (inc i) (count tokens))
            (some? (parse-number-at tokens (inc i))))
       (recur (inc i) [] (conj segments current)
-             (conj ops (if (= "*" (nth tokens i)) :* :/)))
+             (conj ops (case (nth tokens i)
+                         "*" :*
+                         "/" :/
+                         "+" :+
+                         "-" :-)))
 
       :else
       (recur (inc i) (conj current (nth tokens i)) segments ops))))
@@ -682,12 +686,14 @@
     (or (when-let [{:keys [segments ops]} (split-on-qty-ops tokens)]
           (let [parsed (mapv parse-qty-segment segments)]
             (when (and (every? some? parsed)
-                       ;; First operand must have a unit when multiplying —
-                       ;; otherwise it is plain scalar math (e.g. "3 * 4 feet").
-                       ;; Division with a bare scalar numerator is allowed
-                       ;; (e.g. "4.5 / 77 days/meter").
-                       (or (not= {} (:unit (first parsed)))
-                           (some #{:/} ops)))
+                       ;; For +/- all operands must have units — otherwise
+                       ;; it's plain scalar math (e.g. "3 + 2 hours").
+                       ;; For * the first operand must have a unit, unless
+                       ;; there's also a / (e.g. "4.5 / 77 days/meter").
+                       (if (every? #{:+ :-} ops)
+                         (every? #(not= {} (:unit %)) parsed)
+                         (or (not= {} (:unit (first parsed)))
+                             (some #{:/} ops))))
               {:qty-expr true :terms parsed :ops ops})))
         ;; Existing: simple or mixed quantities
         (loop [i 0

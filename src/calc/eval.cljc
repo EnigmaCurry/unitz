@@ -114,7 +114,7 @@
      :cljs x))
 
 (defn- evaluate-qty-expr
-  "Evaluate quantity arithmetic: multiply/divide quantities with units,
+  "Evaluate quantity arithmetic: multiply/divide/add/subtract quantities with units,
    then convert the result to `to-unit`."
   [{:keys [terms ops]} to-unit]
   (let [first-spec (u/unit-spec (:unit (first terms)))
@@ -126,16 +126,26 @@
                       :* {:value (* value term-val)
                           :dim   (u/merge-dims dim (:dim spec))}
                       :/ {:value (u/safe-div value term-val)
-                          :dim   (u/merge-dims dim (u/scale-dim (:dim spec) -1))})))
+                          :dim   (u/merge-dims dim (u/scale-dim (:dim spec) -1))}
+                      :+ (if (= dim (:dim spec))
+                           {:value (+ value term-val) :dim dim}
+                           (reduced {:error :incompatible-dimensions
+                                     :from dim :to (:dim spec)}))
+                      :- (if (= dim (:dim spec))
+                           {:value (- value term-val) :dim dim}
+                           (reduced {:error :incompatible-dimensions
+                                     :from dim :to (:dim spec)})))))
                 {:value (* (coerce-to-decimal (:value (first terms))) (:scale first-spec))
                  :dim   (:dim first-spec)}
-                (map vector ops (rest terms)))
-        to-spec (u/unit-spec to-unit)]
-    (if (= (:dim result) (:dim to-spec))
-      (u/normalize-number (u/safe-div (:value result) (:scale to-spec)))
-      {:error :incompatible-dimensions
-       :from  (:dim result)
-       :to    (:dim to-spec)})))
+                (map vector ops (rest terms)))]
+    (if (:error result)
+      result
+      (let [to-spec (u/unit-spec to-unit)]
+        (if (= (:dim result) (:dim to-spec))
+          (u/normalize-number (u/safe-div (:value result) (:scale to-spec)))
+          {:error :incompatible-dimensions
+           :from  (:dim result)
+           :to    (:dim to-spec)})))))
 
 ;; ---------------------------------------------------------------------------
 ;; Auto-scaling: pick the best unit for a given dimension and SI value
@@ -217,11 +227,21 @@
                       :* {:value (* value term-val)
                           :dim   (u/merge-dims dim (:dim spec))}
                       :/ {:value (u/safe-div value term-val)
-                          :dim   (u/merge-dims dim (u/scale-dim (:dim spec) -1))})))
+                          :dim   (u/merge-dims dim (u/scale-dim (:dim spec) -1))}
+                      :+ (if (= dim (:dim spec))
+                           {:value (+ value term-val) :dim dim}
+                           (reduced {:error :incompatible-dimensions
+                                     :from dim :to (:dim spec)}))
+                      :- (if (= dim (:dim spec))
+                           {:value (- value term-val) :dim dim}
+                           (reduced {:error :incompatible-dimensions
+                                     :from dim :to (:dim spec)})))))
                 {:value (* (coerce-to-decimal (:value (first terms))) (:scale first-spec))
                  :dim   (:dim first-spec)}
                 (map vector ops (rest terms)))]
-    (auto-select-unit (:dim result) (:value result))))
+    (if (:error result)
+      result
+      (auto-select-unit (:dim result) (:value result)))))
 
 ;; ============================================================================
 ;; Request dispatch

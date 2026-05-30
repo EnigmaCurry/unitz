@@ -182,6 +182,7 @@
    "3 feet in inches"
    "5 feet 11 inches to cm"
    "300 miles / 65 mph in hours and minutes"
+   "100.4 weeks in hours and minutes"
    "180cm in feet and inches"
    "10 is what percent of 250?"
    "100 fahrenheit to celsius"
