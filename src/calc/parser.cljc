@@ -413,18 +413,30 @@
             (when-let [v (parse-math (str/join " " parts))]
               [v j])))))))
 
+(def ordinal-fractions
+  {"half"       #?(:clj 1/2 :cljs 0.5)
+   "third"      #?(:clj 1/3 :cljs (/ 1 3))
+   "quarter"    #?(:clj 1/4 :cljs 0.25)
+   "fifth"      #?(:clj 1/5 :cljs 0.2)
+   "sixth"      #?(:clj 1/6 :cljs (/ 1 6))
+   "seventh"    #?(:clj 1/7 :cljs (/ 1 7))
+   "eighth"     #?(:clj 1/8 :cljs 0.125)
+   "ninth"      #?(:clj 1/9 :cljs (/ 1 9))
+   "tenth"      #?(:clj 1/10 :cljs 0.1)
+   "sixteenth"  #?(:clj 1/16 :cljs 0.0625)})
+
 (defn parse-number-at [tokens i]
   (let [t (some-> (nth tokens i nil) str/lower-case)
         t2 (some-> (nth tokens (inc i) nil) str/lower-case)]
     (cond
+      (and (#{"a" "an"} t) (contains? ordinal-fractions t2))
+      [(ordinal-fractions t2) (+ i 2)]
+
       (#{"a" "an"} t)
       [1 (inc i)]
 
-      (= "half" t)
-      [#?(:clj 1/2 :cljs 0.5) (inc i)]
-
-      (= "quarter" t)
-      [#?(:clj 1/4 :cljs 0.25) (inc i)]
+      (contains? ordinal-fractions t)
+      [(ordinal-fractions t) (inc i)]
 
       ;; Plain number, possibly followed by mixed fraction or math operators
       (some? (parse-number-token t))
