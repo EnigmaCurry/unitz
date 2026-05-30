@@ -171,8 +171,10 @@
 (def examples
   ["100GB / 900Mbps"
    "12 feet in yards"
-   "how many inches are in 3 feet?"
+   "2 cups in tablespoons"
+   "3 feet in inches"
    "5 feet 11 inches to cm"
+   "10 is what percent of 250?"
    "100 fahrenheit to celsius"
    "60 mph in ft/s"
    "1 GB in MB"
@@ -180,17 +182,15 @@
    "2 cubic yards to gallons"
    "100 MB / 10 Mbps in seconds"
    "7 inches in feet as a fraction"
-   "10 is what percent of 100?"
    "15% of 50"
    "sqrt(144)"
    "square root of 2"
    "cube root of 27"
    "4th root of 625"
-   "root(3, 125)"
    "2 * sqrt(25)"
    "2 + 2"
    "3 * (4 + 5)"
-   "10e9 bytes in GB"])
+   "1e9 BTU in kWh"])
 
 (def unit-groups units/unit-groups)
 
