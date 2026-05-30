@@ -161,6 +161,18 @@
    :s      {:dim {:time 1} :scale (->bigdec 1)
             :name "seconds" :short "s" :auto-scale true
             :aliases ["s" "sec" "second" "seconds"]}
+   :ms     {:dim {:time 1} :scale (->bigdec 0.001)
+            :name "ms" :short "ms" :auto-scale true
+            :aliases ["ms" "millisecond" "milliseconds"]}
+   :us     {:dim {:time 1} :scale (->bigdec 0.000001)
+            :name "μs" :short "μs" :auto-scale true
+            :aliases ["us" "μs" "microsecond" "microseconds"]}
+   :ns     {:dim {:time 1} :scale (->bigdec 0.000000001)
+            :name "ns" :short "ns" :auto-scale true
+            :aliases ["nanosecond" "nanoseconds" "nsec"]}
+   :ps     {:dim {:time 1} :scale (->bigdec 0.000000000001)
+            :name "ps" :short "ps"
+            :aliases ["ps" "picosecond" "picoseconds"]}
    :min    {:dim {:time 1} :scale (->bigdec 60)
             :name "minutes" :short "min" :auto-scale true
             :aliases ["min" "minute" "minutes"]}
@@ -298,6 +310,15 @@
    :J      {:dim {:mass 1 :length 2 :time -2} :scale (->bigdec 1)
             :name "joules" :short "J" :auto-scale true
             :aliases ["j" "joule" "joules"]}
+   :kJ     {:dim {:mass 1 :length 2 :time -2} :scale (->bigdec 1000)
+            :name "kJ" :short "kJ" :auto-scale true
+            :aliases ["kj" "kJ" "kilojoule" "kilojoules"]}
+   :MJ     {:dim {:mass 1 :length 2 :time -2} :scale (->bigdec 1000000)
+            :name "MJ" :short "MJ" :auto-scale true
+            :aliases ["MJ" "megajoule" "megajoules"]}
+   :GJ     {:dim {:mass 1 :length 2 :time -2} :scale (->bigdec 1000000000)
+            :name "GJ" :short "GJ" :auto-scale true
+            :aliases ["GJ" "gigajoule" "gigajoules"]}
    :cal    {:dim {:mass 1 :length 2 :time -2} :scale (->bigdec 4.184)
             :name "cal" :short "cal" :auto-scale true
             :aliases ["cal" "calorie" "calories"]}
@@ -341,6 +362,18 @@
    :Pa     {:dim {:mass 1 :length -1 :time -2} :scale (->bigdec 1)
             :name "pascals" :short "Pa"
             :aliases ["pa" "pascal" "pascals"]}
+   :hPa    {:dim {:mass 1 :length -1 :time -2} :scale (->bigdec 100)
+            :name "hPa" :short "hPa"
+            :aliases ["hpa" "hPa" "hectopascal" "hectopascals"]}
+   :kPa    {:dim {:mass 1 :length -1 :time -2} :scale (->bigdec 1000)
+            :name "kPa" :short "kPa"
+            :aliases ["kpa" "kPa" "kilopascal" "kilopascals"]}
+   :MPa    {:dim {:mass 1 :length -1 :time -2} :scale (->bigdec 1000000)
+            :name "MPa" :short "MPa"
+            :aliases ["MPa" "megapascal" "megapascals"]}
+   :GPa    {:dim {:mass 1 :length -1 :time -2} :scale (->bigdec 1000000000)
+            :name "GPa" :short "GPa"
+            :aliases ["GPa" "gigapascal" "gigapascals"]}
    :psi    {:dim {:mass 1 :length -1 :time -2} :scale (->bigdec 6894.757293168)
             :name "psi" :short "psi"
             :aliases ["psi"]}
@@ -375,12 +408,21 @@
    :V      {:dim {:mass 1 :length 2 :time -3 :current -1} :scale (->bigdec 1)
             :name "volts" :short "V" :auto-scale true
             :aliases ["v" "volt" "volts"]}
+   :mV     {:dim {:mass 1 :length 2 :time -3 :current -1} :scale (->bigdec 0.001)
+            :name "mV" :short "mV" :auto-scale true
+            :aliases ["mv" "millivolt" "millivolts"]}
+   :kV     {:dim {:mass 1 :length 2 :time -3 :current -1} :scale (->bigdec 1000)
+            :name "kV" :short "kV" :auto-scale true
+            :aliases ["kv" "kilovolt" "kilovolts"]}
    :A      {:dim {:current 1} :scale (->bigdec 1)
             :name "amps" :short "A" :auto-scale true
             :aliases ["amp" "amps" "ampere" "amperes"]}
    :mA     {:dim {:current 1} :scale (->bigdec 0.001)
             :name "mA" :short "mA" :auto-scale true
             :aliases ["ma" "milliamp" "milliamps" "milliampere" "milliamperes"]}
+   :uA     {:dim {:current 1} :scale (->bigdec 0.000001)
+            :name "μA" :short "μA"
+            :aliases ["ua" "μA" "uA" "microamp" "microamps" "microampere" "microamperes"]}
    :ohm    {:dim {:mass 1 :length 2 :time -3 :current -2} :scale (->bigdec 1)
             :name "ohms" :short "Ω"
             :aliases ["ohm" "ohms" "Ω"]}
@@ -507,7 +549,7 @@
     :keys [:kg :g :mg :ug :lb :oz :tonne :ton :stone :ct]}
    {:name "Time"
     :description "Duration and time intervals"
-    :keys [:s :min :hr :day :week :yr :century :millennium]}
+    :keys [:s :ms :us :ns :ps :min :hr :day :week :yr :century :millennium]}
    {:name "Temperature"
     :description "Temperature scales"
     :keys [:degC :degF :K]}
@@ -531,19 +573,19 @@
     :keys [:N]}
    {:name "Energy"
     :description "Capacity to do work (dimensional: mass \u00D7 length\u00B2 \u00D7 time\u207B\u00B2)"
-    :keys [:J :cal :kcal :kWh :BTU :eV :Wh]}
+    :keys [:J :kJ :MJ :GJ :cal :kcal :kWh :BTU :eV :Wh]}
    {:name "Power"
     :description "Rate of energy transfer (dimensional: mass \u00D7 length\u00B2 \u00D7 time\u207B\u00B3)"
     :keys [:W :mW :kW :MW :GW :TW]}
    {:name "Pressure"
     :description "Force per unit area (dimensional: mass \u00D7 length\u207B\u00B9 \u00D7 time\u207B\u00B2)"
-    :keys [:Pa :psi :bar :atm :mmHg :torr]}
+    :keys [:Pa :hPa :kPa :MPa :GPa :psi :bar :atm :mmHg :torr]}
    {:name "Frequency"
     :description "Cycles per unit time (dimensional: time\u207B\u00B9)"
     :keys [:Hz :kHz :MHz :GHz]}
    {:name "Electrical"
     :description "Voltage, current, resistance, capacitance, and inductance"
-    :keys [:V :A :mA :ohm :F :uF :nF :pF :H]}
+    :keys [:V :mV :kV :A :mA :uA :ohm :F :uF :nF :pF :H]}
    {:name "Angle"
     :description "Angular measurements"
     :keys [:rad :deg]}

@@ -180,6 +180,7 @@
    "12 feet in yards"
    "2 cups in tablespoons"
    "3 feet in inches"
+   "37 W / 12 v"
    "5 feet 11 inches to cm"
    "300 miles / 65 mph in hours and minutes"
    "60 mph * 2 hours"
