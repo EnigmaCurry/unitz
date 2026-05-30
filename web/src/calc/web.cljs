@@ -118,16 +118,37 @@
       (.removeItem js/localStorage "calc-fmt-opts"))
     (catch :default _ nil)))
 
+(defn load-default-fmt-opts []
+  (try
+    (when-let [raw (.getItem js/localStorage "calc-default-fmt-opts")]
+      (js->clj (js/JSON.parse raw) :keywordize-keys true))
+    (catch :default _ nil)))
+
+(defn save-default-fmt-opts! [opts]
+  (try
+    (if (seq opts)
+      (.setItem js/localStorage "calc-default-fmt-opts"
+                (js/JSON.stringify (clj->js opts)))
+      (.removeItem js/localStorage "calc-default-fmt-opts"))
+    (catch :default _ nil)))
+
 (defonce state (r/atom {:input ""
                         :result nil
                         :error nil
                         :history (load-history)
                         :fmt-opts (load-fmt-opts)
+                        :default-fmt-opts (load-default-fmt-opts)
                         :hist-index -1
                         :saved-input ""
                         :menu-open false
                         :theme (load-theme)
                         :page :calc}))
+
+(defn effective-fmt-opts
+  "Merge default settings with session overrides. Session wins."
+  []
+  (let [{:keys [default-fmt-opts fmt-opts]} @state]
+    (merge default-fmt-opts fmt-opts)))
 
 (defonce log-ref (atom nil))
 (defonce suppress-menu (atom false))
@@ -175,7 +196,7 @@
   [:button.example
    {:on-click (fn []
                 (swap! state assoc :input text)
-                (let [ev (evaluate text (:fmt-opts @state))]
+                (let [ev (evaluate text (effective-fmt-opts))]
                   (swap! state assoc
                          :result (:result ev)
                          :error (:error ev)
@@ -236,7 +257,7 @@
 
 (defn- run-example [input]
   (swap! state assoc :input input)
-  (let [ev (evaluate input (:fmt-opts @state))]
+  (let [ev (evaluate input (effective-fmt-opts))]
     (swap! state assoc
            :result (:result ev)
            :error (:error ev)
@@ -303,10 +324,10 @@
     [:h3 "Commands"]
     [:div.unit-table
      [:div.unit-row [:span.unit-sym "/help"] [:span.unit-label "Show this help page"]]
-     [:div.unit-row [:span.unit-sym "/p N"] [:span.unit-label "Set precision to N decimal places"]]
-     [:div.unit-row [:span.unit-sym "/p"] [:span.unit-label "Clear precision setting"]]
-     [:div.unit-row [:span.unit-sym "/s N"] [:span.unit-label "Set significant figures to N"]]
-     [:div.unit-row [:span.unit-sym "/s"] [:span.unit-label "Clear sig-figs setting"]]
+     [:div.unit-row [:span.unit-sym "/p N"] [:span.unit-label "Set precision to N decimals (session)"]]
+     [:div.unit-row [:span.unit-sym "/p"] [:span.unit-label "Clear session precision"]]
+     [:div.unit-row [:span.unit-sym "/s N"] [:span.unit-label "Set sig-figs to N (session)"]]
+     [:div.unit-row [:span.unit-sym "/s"] [:span.unit-label "Clear session sig-figs"]]
      [:div.unit-row [:span.unit-sym "clear"] [:span.unit-label "Clear all history"]]]]
    [:h2 {:style {:margin-top "1.5rem" :margin-bottom "0.5rem" :font-size "1.1rem" :color "var(--accent)"}} "Available Units"]
    (for [{group-name :name :keys [description units]} unit-groups]
@@ -321,12 +342,77 @@
           [:span.unit-sym (name sym)]
           [:span.unit-label label]])]])])
 
+(defn settings-page []
+  (let [defaults (or (:default-fmt-opts @state) {})
+        has-round (contains? defaults :round)
+        has-sigs (contains? defaults :sig-figs)
+        round-val (or (:round defaults) 4)
+        sigs-val (or (:sig-figs defaults) 6)]
+    [:div.help-page
+     [:div.help-header
+      [:button.back-btn
+       {:on-click #(swap! state assoc :page :calc)}
+       "\u2190 Back"]
+      [:h2 "Settings"]]
+     [:div.settings-section
+      [:h3 "Default Formatting"]
+      [:p.group-desc
+       "Set default precision for all calculations. "
+       "Use /p and /s commands to override per session."]
+      [:div.setting-row
+       [:label.setting-label
+        [:input {:type "checkbox"
+                 :checked has-round
+                 :on-change
+                 (fn [_]
+                   (let [new-opts (if has-round
+                                   (dissoc defaults :round)
+                                   (-> defaults
+                                       (dissoc :sig-figs)
+                                       (assoc :round round-val)))]
+                     (swap! state assoc :default-fmt-opts new-opts)
+                     (save-default-fmt-opts! new-opts)))}]
+        "Decimal places"]
+       (when has-round
+         [:input.setting-input
+          {:type "number" :min 0 :max 20 :value round-val
+           :on-change
+           (fn [e]
+             (let [n (js/parseInt (.. e -target -value) 10)]
+               (when-not (js/isNaN n)
+                 (let [new-opts (assoc defaults :round n)]
+                   (swap! state assoc :default-fmt-opts new-opts)
+                   (save-default-fmt-opts! new-opts)))))}])]
+      [:div.setting-row
+       [:label.setting-label
+        [:input {:type "checkbox"
+                 :checked has-sigs
+                 :on-change
+                 (fn [_]
+                   (let [new-opts (if has-sigs
+                                   (dissoc defaults :sig-figs)
+                                   (-> defaults
+                                       (dissoc :round)
+                                       (assoc :sig-figs sigs-val)))]
+                     (swap! state assoc :default-fmt-opts new-opts)
+                     (save-default-fmt-opts! new-opts)))}]
+        "Significant figures"]
+       (when has-sigs
+         [:input.setting-input
+          {:type "number" :min 1 :max 20 :value sigs-val
+           :on-change
+           (fn [e]
+             (let [n (js/parseInt (.. e -target -value) 10)]
+               (when-not (js/isNaN n)
+                 (let [new-opts (assoc defaults :sig-figs n)]
+                   (swap! state assoc :default-fmt-opts new-opts)
+                   (save-default-fmt-opts! new-opts)))))}])]]]))
+
 (def clear-commands #{"clear" "/clear" "reset" "/reset"})
 
 (defn clear-history! []
   (swap! state assoc :input "" :result nil :error nil :history [] :fmt-opts nil)
-  (save-history! [])
-  (save-fmt-opts! nil))
+  (save-history! []))
 
 (defn parse-slash-command
   "Parse a slash command. Returns {:cmd name :arg value} or nil."
@@ -345,30 +431,26 @@
     "p"
     (if (str/blank? arg)
       (do (swap! state update :fmt-opts dissoc :round)
-          (save-fmt-opts! (:fmt-opts @state))
-          {:input "/p" :result "Precision cleared"})
+          {:input "/p" :result "Precision cleared (session)"})
       (let [n (js/parseInt arg 10)]
         (if (js/isNaN n)
           {:input (str "/p " arg) :error "/p requires a number"}
           (do (swap! state assoc :fmt-opts (-> (or (:fmt-opts @state) {})
                                                (dissoc :sig-figs)
                                                (assoc :round n)))
-              (save-fmt-opts! (:fmt-opts @state))
-              {:input (str "/p " n) :result (str "Precision set to " n " decimal places")}))))
+              {:input (str "/p " n) :result (str "Precision set to " n " decimal places (session)")}))))
 
     "s"
     (if (str/blank? arg)
       (do (swap! state update :fmt-opts dissoc :sig-figs)
-          (save-fmt-opts! (:fmt-opts @state))
-          {:input "/s" :result "Sig-figs cleared"})
+          {:input "/s" :result "Sig-figs cleared (session)"})
       (let [n (js/parseInt arg 10)]
         (if (js/isNaN n)
           {:input (str "/s " arg) :error "/s requires a number"}
           (do (swap! state assoc :fmt-opts (-> (or (:fmt-opts @state) {})
                                                (dissoc :round)
                                                (assoc :sig-figs n)))
-              (save-fmt-opts! (:fmt-opts @state))
-              {:input (str "/s " n) :result (str "Sig-figs set to " n)}))))
+              {:input (str "/s " n) :result (str "Sig-figs set to " n " (session)")}))))
 
     ;; unknown
     {:input (str "/" cmd) :error (str "Unknown command: /" cmd)}))
@@ -390,7 +472,7 @@
           (js/setTimeout scroll-log-to-top 0))
 
         :else
-        (let [ev (evaluate input (:fmt-opts @state))]
+        (let [ev (evaluate input (effective-fmt-opts))]
           (swap! state assoc
                  :result (:result ev)
                  :error (:error ev)
@@ -443,11 +525,12 @@
       nil)))
 
 (defn app []
-  (let [{:keys [input history menu-open theme fmt-opts]} @state
+  (let [{:keys [input history menu-open theme]} @state
+        eff-fmt (effective-fmt-opts)
         typing? (not (str/blank? input))
         preview (when (and typing?
                            (not (str/starts-with? (str/trim input) "/")))
-                  (evaluate input fmt-opts))]
+                  (evaluate input eff-fmt))]
     [:<>
      [:header
       [:h1 "calc"]
@@ -495,6 +578,10 @@
           (if (= theme "dark") "Light Mode" "Dark Mode")]
          [:button.menu-item
           {:on-click (fn []
+                      (swap! state assoc :page :settings :menu-open false))}
+          "Settings"]
+         [:button.menu-item
+          {:on-click (fn []
                       (swap! state assoc :page :help :menu-open false))}
           "Help"]
          [:a.menu-item
@@ -526,8 +613,9 @@
             :else
             [:span.preview-result (str "= " (:result preview))])]
          [:button.convert {:on-click evaluate!} "="]])
-      (if (= :help (:page @state))
-        [help-page]
+      (case (:page @state)
+        :help [help-page]
+        :settings [settings-page]
         (if (seq history)
           [:div.log
            (for [[idx {:keys [input from target result error]}] (map-indexed vector history)]
