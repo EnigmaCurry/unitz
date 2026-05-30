@@ -140,6 +140,18 @@
       (.removeItem js/localStorage "calc-default-fmt-opts"))
     (catch :default _ nil)))
 
+(defn load-hide-examples []
+  (try
+    (= "true" (.getItem js/localStorage "calc-hide-examples"))
+    (catch :default _ false)))
+
+(defn save-hide-examples! [v]
+  (try
+    (if v
+      (.setItem js/localStorage "calc-hide-examples" "true")
+      (.removeItem js/localStorage "calc-hide-examples"))
+    (catch :default _ nil)))
+
 (defonce state (r/atom {:input ""
                         :result nil
                         :error nil
@@ -150,6 +162,7 @@
                         :saved-input ""
                         :menu-open false
                         :theme (load-theme)
+                        :hide-examples (load-hide-examples)
                         :page :calc}))
 
 (defn effective-fmt-opts
@@ -383,6 +396,18 @@
                  :checked (= theme "dark")
                  :on-change (fn [_] (toggle-theme!))}]
         "Dark mode"]]]
+     [:div.settings-section
+      [:h3 "History"]
+      [:div.setting-row
+       [:label.setting-label
+        [:input {:type "checkbox"
+                 :checked (:hide-examples @state)
+                 :on-change
+                 (fn [_]
+                   (let [v (not (:hide-examples @state))]
+                     (swap! state assoc :hide-examples v)
+                     (save-hide-examples! v)))}]
+        "Hide examples cloud"]]]
      [:div.settings-section
       [:h3 "Default Formatting"]
       [:p.group-desc
@@ -675,11 +700,12 @@
                              (.stopPropagation e)
                              (delete-history-entry! idx))}
                 "\u00d7"]])])
-         [:div.examples
-          [:h3 "Try some examples"]
-          [:div.chips
-           (for [ex examples]
-             ^{:key ex} [example-chip ex])]]])]]))
+         (when-not (:hide-examples @state)
+           [:div.examples
+            [:h3 "Try some examples"]
+            [:div.chips
+             (for [ex examples]
+               ^{:key ex} [example-chip ex])]])])]]))
 
 (defonce root (atom nil))
 

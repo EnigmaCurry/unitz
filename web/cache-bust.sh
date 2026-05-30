@@ -46,6 +46,16 @@ awk -v js_file="js/main.${HASH}.js" -v hash="${HASH}" -v git_sha="${GIT_SHA}" '
     next
   }
   { print }
-' index.html.template > calc.html
+' index.html.template > calc.html.tmp
+
+# Prepend LICENSE as HTML comment
+LICENSE_FILE="$(dirname "$0")/../../LICENSE"
+{
+  echo "<!--"
+  cat "$LICENSE_FILE"
+  echo "-->"
+  cat calc.html.tmp
+} > calc.html
+rm calc.html.tmp
 echo "Cache-busted with hash: ${HASH}"
 echo "Generated calc.html ($(du -h calc.html | cut -f1) standalone)"
