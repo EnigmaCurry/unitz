@@ -295,7 +295,52 @@
       "quarter mile in meters"
       {:op :convert
        :quantity {:value 1/4 :unit :mi}
-       :to :m})))
+       :to :m}
+
+      "a quarter cup in teaspoons"
+      {:op :convert
+       :quantity {:value 1/4 :unit :cup}
+       :to :tsp}
+
+      "a half gallon in liters"
+      {:op :convert
+       :quantity {:value 1/2 :unit :gal}
+       :to :l}
+
+      "a third cup in tablespoons"
+      {:op :convert
+       :quantity {:value 1/3 :unit :cup}
+       :to :tbsp}
+
+      "an eighth mile in feet"
+      {:op :convert
+       :quantity {:value 1/8 :unit :mi}
+       :to :ft}
+
+      "a sixteenth mile in yards"
+      {:op :convert
+       :quantity {:value 1/16 :unit :mi}
+       :to :yd}
+
+      "a fifth gallon in cups"
+      {:op :convert
+       :quantity {:value 1/5 :unit :gal}
+       :to :cup}
+
+      "a tenth meter in centimeters"
+      {:op :convert
+       :quantity {:value 1/10 :unit :m}
+       :to :cm}
+
+      "third cup in tablespoons"
+      {:op :convert
+       :quantity {:value 1/3 :unit :cup}
+       :to :tbsp}
+
+      "eighth mile in feet"
+      {:op :convert
+       :quantity {:value 1/8 :unit :mi}
+       :to :ft})))
 
 (deftest parses-approximate-requests
   (testing "approximation intent is preserved for formatting"

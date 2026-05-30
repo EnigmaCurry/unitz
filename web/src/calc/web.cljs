@@ -350,13 +350,22 @@
         has-round (contains? defaults :round)
         has-sigs (contains? defaults :sig-figs)
         round-val (or (:round defaults) 4)
-        sigs-val (or (:sig-figs defaults) 6)]
+        sigs-val (or (:sig-figs defaults) 6)
+        theme (:theme @state)]
     [:div.help-page
      [:div.help-header
       [:button.back-btn
        {:on-click #(swap! state assoc :page :calc)}
        "\u2190 Back"]
       [:h2 "Settings"]]
+     [:div.settings-section
+      [:h3 "Appearance"]
+      [:div.setting-row
+       [:label.setting-label
+        [:input {:type "checkbox"
+                 :checked (= theme "dark")
+                 :on-change (fn [_] (toggle-theme!))}]
+        "Dark mode"]]]
      [:div.settings-section
       [:h3 "Default Formatting"]
       [:p.group-desc
@@ -416,6 +425,10 @@
 (defn clear-history! []
   (swap! state assoc :input "" :result nil :error nil :history [] :fmt-opts nil)
   (save-history! []))
+
+(defn delete-history-entry! [idx]
+  (swap! state update :history (fn [h] (into [] (concat (subvec h 0 idx) (subvec h (inc idx))))))
+  (save-history! (:history @state)))
 
 (defn parse-slash-command
   "Parse a slash command. Returns {:cmd name :arg value} or nil."
@@ -528,7 +541,7 @@
       nil)))
 
 (defn app []
-  (let [{:keys [input history menu-open theme]} @state
+  (let [{:keys [input history menu-open]} @state
         eff-fmt (effective-fmt-opts)
         typing? (not (str/blank? input))
         preview (when (and typing?
@@ -571,22 +584,17 @@
           "Home"]
          [:button.menu-item
           {:on-click (fn []
+                      (swap! state assoc :page :help :menu-open false))}
+          "Help"]
+         [:button.menu-item
+          {:on-click (fn []
                       (clear-history!)
                       (swap! state assoc :menu-open false))}
           "Clear History"]
          [:button.menu-item
           {:on-click (fn []
-                      (toggle-theme!)
-                      (swap! state assoc :menu-open false))}
-          (if (= theme "dark") "Light Mode" "Dark Mode")]
-         [:button.menu-item
-          {:on-click (fn []
                       (swap! state assoc :page :settings :menu-open false))}
           "Settings"]
-         [:button.menu-item
-          {:on-click (fn []
-                      (swap! state assoc :page :help :menu-open false))}
-          "Help"]
          [:a.menu-item
           {:href "https://github.com/EnigmaCurry/calc"
            :target "_blank"
@@ -644,7 +652,12 @@
                  [:span.log-result (str " = " result " " target)]
 
                  :else
-                 [:span.log-result (str " = " result)])])])
+                 [:span.log-result (str " = " result)])
+               [:button.log-delete
+                {:on-click (fn [e]
+                             (.stopPropagation e)
+                             (delete-history-entry! idx))}
+                "\u00d7"]])])
          [:div.examples
           [:h3 "Try some examples"]
           [:div.chips

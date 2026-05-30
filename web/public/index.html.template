@@ -287,6 +287,29 @@
       cursor: pointer;
       user-select: none;
       -webkit-user-select: none;
+      display: flex;
+      align-items: center;
+    }
+
+    .log-delete {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 0 0.25rem;
+      line-height: 1;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .log-entry:hover .log-delete {
+      opacity: 1;
+    }
+
+    .log-delete:hover {
+      color: var(--red);
     }
 
     .log-entry.latest {
