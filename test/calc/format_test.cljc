@@ -17,6 +17,16 @@
     (is (= "3.14" (fmt/format-number 3.14 nil)))
     (is (= "-0.5" (fmt/format-number -0.5 nil)))))
 
+(deftest format-number-large-integers
+  (testing "integers above 2^32 are not truncated"
+    (is (= "10000000000" (fmt/format-number 10000000000 nil)))
+    (is (= "1099511627776" (fmt/format-number 1099511627776 nil)))
+    ;; floats > 2^32: rounding should not truncate to 32 bits
+    (is (= "10000000000" (fmt/format-number 10000000000.0 {:round 0}))))
+
+  (testing "large integer as fraction"
+    (is (= "10000000000" (fmt/format-number 10000000000.0 {:style :fraction})))))
+
 ;; ---------------------------------------------------------------------------
 ;; format-number — rounding / precision
 ;; ---------------------------------------------------------------------------

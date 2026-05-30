@@ -46,8 +46,8 @@
 
 (defn- format-as-fraction [x]
   (let [d (double x)]
-    (if (== d (#?(:clj long :cljs int) d))
-      (str (#?(:clj long :cljs int) d))
+    (if (== d (#?(:clj long :cljs js/Math.trunc) d))
+      (str (#?(:clj long :cljs js/Math.trunc) x))
       (let [neg?  (neg? d)
             abs-d (#?(:clj #(Math/abs %) :cljs js/Math.abs) d)
             whole (#?(:clj long :cljs js/Math.trunc) abs-d)
@@ -114,7 +114,7 @@
               s))
 
           (js/Number.isInteger x)
-          (str (int x))
+          (str (js/Math.trunc x))
 
           :else
           (let [s (.toPrecision (js/Number x) 10)]
